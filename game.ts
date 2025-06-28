@@ -130,12 +130,12 @@ class Target {
     constructor() {
         this.position = { x: Math.random() * canvas.width, y: -30 };
         const angle = (Math.random() - 0.5) * (Math.PI / 3); // -30 to +30 degrees
-        const speed = 2;
+        const speed = 1;
         this.velocity = {
             x: Math.sin(angle) * speed,
             y: Math.cos(angle) * speed
         };
-        this.radius = 15;
+        this.radius = 30;
 
         // Adjust starting position to ensure it doesn't go off-screen
         const timeToBottom = (canvas.height + this.radius) / this.velocity.y;
@@ -163,9 +163,37 @@ class Target {
     }
 }
 
+class Explosion {
+    position: Vector;
+    radius: number;
+    maxRadius: number;
+    speed: number;
+
+    constructor(x: number, y: number) {
+        this.position = { x, y };
+        this.radius = 1;
+        this.maxRadius = 60;
+        this.speed = 2;
+    }
+
+    draw() {
+        const opacity = 1 - this.radius / this.maxRadius;
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 0, 0, ${opacity})`;
+        ctx.fill();
+    }
+
+    update() {
+        this.radius += this.speed;
+        this.draw();
+    }
+}
+
 const rocket = new Rocket();
 const particles: Particle[] = [];
 const targets: Target[] = [];
+const explosions: Explosion[] = [];
 let score = 0;
 let lastTargetTime = 0;
 const targetSpawnInterval = 3000; // 3 seconds
@@ -204,6 +232,7 @@ function handleRotation() {
 }
 
 function checkCollisions() {
+    // Rocket with targets
     for (let i = targets.length - 1; i >= 0; i--) {
         const target = targets[i];
         const dx = rocket.position.x - target.position.x;
@@ -211,8 +240,26 @@ function checkCollisions() {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < target.radius + rocket.height / 2) {
+            explosions.push(new Explosion(target.position.x, target.position.y));
             targets.splice(i, 1);
             score++;
+        }
+    }
+
+    // Explosions with targets
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const explosion = explosions[i];
+        for (let j = targets.length - 1; j >= 0; j--) {
+            const target = targets[j];
+            const dx = explosion.position.x - target.position.x;
+            const dy = explosion.position.y - target.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < explosion.radius + target.radius) {
+                explosions.push(new Explosion(target.position.x, target.position.y));
+                targets.splice(j, 1);
+                score++;
+            }
         }
     }
 }
@@ -244,6 +291,7 @@ function resetGame() {
     rocket.reset();
     particles.length = 0;
     targets.length = 0;
+    explosions.length = 0;
     score = 0;
     lastTargetTime = 0;
     gameState = 'playing';
@@ -307,6 +355,14 @@ function gameLoop(currentTime: number) {
         t.update();
         if (t.position.y > canvas.height + t.radius) {
             gameState = 'gameOver';
+        }
+    }
+
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const e = explosions[i];
+        e.update();
+        if (e.radius >= e.maxRadius) {
+            explosions.splice(i, 1);
         }
     }
 
