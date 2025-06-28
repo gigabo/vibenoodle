@@ -278,15 +278,34 @@ function handleRotation() {
     }
 }
 
+function isRocketCollidingWithCircle(circle: Target | Explosion): boolean {
+    const rocketTip = {
+        x: rocket.position.x + Math.sin(rocket.angle) * rocket.height,
+        y: rocket.position.y - Math.cos(rocket.angle) * rocket.height
+    };
+    const rocketBase = rocket.position;
+
+    const dx = rocketTip.x - rocketBase.x;
+    const dy = rocketTip.y - rocketBase.y;
+    const lenSq = dx * dx + dy * dy;
+    const dot = ((circle.position.x - rocketBase.x) * dx + (circle.position.y - rocketBase.y) * dy) / lenSq;
+    const closestX = rocketBase.x + dot * dx;
+    const closestY = rocketBase.y + dot * dy;
+
+    const clampedX = Math.max(Math.min(rocketBase.x, rocketTip.x), Math.min(Math.max(rocketBase.x, rocketTip.x), closestX));
+    const clampedY = Math.max(Math.min(rocketBase.y, rocketTip.y), Math.min(Math.max(rocketBase.y, rocketTip.y), closestY));
+
+    const distanceX = clampedX - circle.position.x;
+    const distanceY = clampedY - circle.position.y;
+
+    return (distanceX * distanceX + distanceY * distanceY) < (circle.radius * circle.radius);
+}
+
 function checkCollisions() {
     // Rocket with targets
     for (let i = targets.length - 1; i >= 0; i--) {
         const target = targets[i];
-        const dx = rocket.position.x - target.position.x;
-        const dy = rocket.position.y - target.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < target.radius + rocket.height / 2) {
+        if (isRocketCollidingWithCircle(target)) {
             bonusTexts.push(new BonusText(target.position.x, target.position.y, 'x1'));
             explosions.push(new Explosion(target.position.x, target.position.y, 1));
             targets.splice(i, 1);
@@ -319,11 +338,7 @@ function checkCollisions() {
     // Rocket with explosions
     for (let i = explosions.length - 1; i >= 0; i--) {
         const explosion = explosions[i];
-        const dx = rocket.position.x - explosion.position.x;
-        const dy = rocket.position.y - explosion.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < explosion.radius + rocket.height / 2) {
+        if (isRocketCollidingWithCircle(explosion)) {
             rocket.reset();
         }
     }
