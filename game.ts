@@ -168,12 +168,14 @@ class Explosion {
     radius: number;
     maxRadius: number;
     speed: number;
+    generation: number;
 
-    constructor(x: number, y: number) {
+    constructor(x: number, y: number, generation: number) {
         this.position = { x, y };
         this.radius = 1;
-        this.maxRadius = 60;
-        this.speed = 2;
+        this.maxRadius = 200;
+        this.speed = 1.5;
+        this.generation = generation;
     }
 
     draw() {
@@ -190,10 +192,40 @@ class Explosion {
     }
 }
 
+class BonusText {
+    position: Vector;
+    velocity: Vector;
+    text: string;
+    life: number;
+    maxLife: number;
+
+    constructor(x: number, y: number, text: string) {
+        this.position = { x, y };
+        this.velocity = { x: 0, y: -1 };
+        this.text = text;
+        this.maxLife = 60;
+        this.life = this.maxLife;
+    }
+
+    draw() {
+        const opacity = this.life / this.maxLife;
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+        ctx.font = '20px Arial';
+        ctx.fillText(this.text, this.position.x, this.position.y);
+    }
+
+    update() {
+        this.position.y += this.velocity.y;
+        this.life -= 1;
+        this.draw();
+    }
+}
+
 const rocket = new Rocket();
 const particles: Particle[] = [];
 const targets: Target[] = [];
 const explosions: Explosion[] = [];
+const bonusTexts: BonusText[] = [];
 let score = 0;
 let lastTargetTime = 0;
 const targetSpawnInterval = 3000; // 3 seconds
@@ -240,7 +272,7 @@ function checkCollisions() {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < target.radius + rocket.height / 2) {
-            explosions.push(new Explosion(target.position.x, target.position.y));
+            explosions.push(new Explosion(target.position.x, target.position.y, 1));
             targets.splice(i, 1);
             score++;
         }
@@ -256,9 +288,11 @@ function checkCollisions() {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < explosion.radius + target.radius) {
-                explosions.push(new Explosion(target.position.x, target.position.y));
+                const bonus = Math.pow(2, explosion.generation);
+                bonusTexts.push(new BonusText(target.position.x, target.position.y, `x${bonus}`));
+                explosions.push(new Explosion(target.position.x, target.position.y, explosion.generation + 1));
                 targets.splice(j, 1);
-                score++;
+                score += bonus;
             }
         }
     }
@@ -292,6 +326,7 @@ function resetGame() {
     particles.length = 0;
     targets.length = 0;
     explosions.length = 0;
+    bonusTexts.length = 0;
     score = 0;
     lastTargetTime = 0;
     gameState = 'playing';
@@ -363,6 +398,14 @@ function gameLoop(currentTime: number) {
         e.update();
         if (e.radius >= e.maxRadius) {
             explosions.splice(i, 1);
+        }
+    }
+
+    for (let i = bonusTexts.length - 1; i >= 0; i--) {
+        const bt = bonusTexts[i];
+        bt.update();
+        if (bt.life <= 0) {
+            bonusTexts.splice(i, 1);
         }
     }
 
