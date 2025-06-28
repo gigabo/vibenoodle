@@ -71,18 +71,19 @@ class Particle {
     radius: number;
     color: string;
     life: number;
+    maxLife: number;
 
-    constructor(x: number, y: number, rocketAngle: number) {
+    constructor(x: number, y: number, rocketAngle: number, rocketVelocity: Vector) {
         this.position = { x, y };
-        const exhaustSpeed = Math.random() * 2 + 1;
-        // Particles move opposite to rocket's thrust
+        const exhaustSpeed = Math.random() * 3 + 2; // Increased initial speed
         this.velocity = {
-            x: -Math.sin(rocketAngle) * exhaustSpeed + (Math.random() - 0.5) * 1.5,
-            y: Math.cos(rocketAngle) * exhaustSpeed + (Math.random() - 0.5) * 1.5
+            x: rocketVelocity.x - Math.sin(rocketAngle) * exhaustSpeed,
+            y: rocketVelocity.y + Math.cos(rocketAngle) * exhaustSpeed
         };
-        this.radius = Math.random() * 2 + 1;
-        this.life = 60; // Shorter lifespan
-        this.color = `rgba(255, 0, 0, 1)`;
+        this.radius = Math.random() * 2.5 + 1;
+        this.maxLife = 80; // Longer lifespan for a better fade effect
+        this.life = this.maxLife;
+        this.color = 'rgba(255, 0, 0, 1)';
     }
 
     draw() {
@@ -94,8 +95,17 @@ class Particle {
 
     update() {
         this.life -= 1;
-        const opacity = Math.max(0, this.life / 60);
-        this.color = `rgba(255, ${opacity * 255}, 0, ${opacity})`; // Fade from red to yellow to transparent
+
+        // Slow down the particle (friction)
+        this.velocity.x *= 0.98;
+        this.velocity.y *= 0.98;
+
+        // Add random sideways drift
+        this.velocity.x += (Math.random() - 0.5) * 0.1;
+
+        const opacity = Math.max(0, this.life / this.maxLife);
+        this.color = `rgba(255, 0, 0, ${opacity})`; // Fade to black (transparent red)
+
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
         this.draw();
@@ -156,15 +166,19 @@ function gameLoop() {
     rocket.update();
 
     // 4. Check boundaries
-    if (rocket.position.y < -rocket.height || rocket.position.x < 0 || rocket.position.x > canvas.width) {
+    if (
+        rocket.position.y < -rocket.height ||
+        rocket.position.y > canvas.height + rocket.height ||
+        rocket.position.x < 0 ||
+        rocket.position.x > canvas.width
+    ) {
         rocket.reset();
     }
 
     // 5. Create particles
-    if (Math.random() > 0.3) { // More particles
-        particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle));
+    if (Math.random() > 0.3) {
+        particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle, rocket.velocity));
     }
-
 
     // 6. Update and draw particles
     for (let i = particles.length - 1; i >= 0; i--) {
