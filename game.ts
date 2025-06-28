@@ -24,7 +24,7 @@ class Rocket {
         this.acceleration = { x: 0, y: 0 };
         this.width = 4;
         this.height = 20;
-        this.thrust = 0.15;
+        this.thrust = 0.075;
         this.angle = 0;
     }
 
@@ -266,7 +266,7 @@ window.addEventListener('keyup', (e) => {
     }
 });
 
-const gravity: Vector = { x: 0, y: 0.05 };
+const gravity: Vector = { x: 0, y: 0.0375 };
 const rotationSpeed = 0.05;
 
 function handleRotation() {
@@ -292,6 +292,7 @@ function checkCollisions() {
             targets.splice(i, 1);
             score++;
             targetSpawnInterval *= 0.99;
+            rocket.reset();
         }
     }
 
@@ -312,6 +313,18 @@ function checkCollisions() {
                 score += bonus;
                 targetSpawnInterval *= 0.99;
             }
+        }
+    }
+
+    // Rocket with explosions
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const explosion = explosions[i];
+        const dx = rocket.position.x - explosion.position.x;
+        const dy = rocket.position.y - explosion.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < explosion.radius + rocket.height / 2) {
+            rocket.reset();
         }
     }
 }
