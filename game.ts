@@ -12,28 +12,55 @@ interface Vector {
 class Rocket {
     position: Vector;
     velocity: Vector;
+    acceleration: Vector;
     width: number;
     height: number;
+    thrust: number;
+    angle: number;
 
     constructor() {
         this.position = { x: canvas.width / 2, y: canvas.height - 30 };
-        this.velocity = { x: 0, y: -2 };
+        this.velocity = { x: 0, y: 0 };
+        this.acceleration = { x: 0, y: 0 };
         this.width = 4;
         this.height = 20;
+        this.thrust = 0.15;
+        this.angle = 0;
+    }
+
+    reset() {
+        this.position = { x: canvas.width / 2, y: canvas.height - 30 };
+        this.velocity = { x: 0, y: 0 };
+        this.acceleration = { x: 0, y: 0 };
+        this.angle = 0;
+    }
+
+    applyForce(force: Vector) {
+        this.acceleration.x += force.x;
+        this.acceleration.y += force.y;
     }
 
     draw() {
-        ctx.fillStyle = 'white';
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+        ctx.rotate(this.angle);
+
         ctx.beginPath();
-        ctx.moveTo(this.position.x, this.position.y);
-        ctx.lineTo(this.position.x, this.position.y - this.height);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -this.height);
         ctx.strokeStyle = 'white';
         ctx.lineWidth = this.width;
         ctx.stroke();
+
+        ctx.restore();
     }
 
     update() {
+        this.velocity.x += this.acceleration.x;
+        this.velocity.y += this.acceleration.y;
         this.position.x += this.velocity.x;
+        this.position.y += this.velocity.y;
+        this.acceleration = { x: 0, y: 0 }; // Clear acceleration
         this.draw();
     }
 }
@@ -45,12 +72,17 @@ class Particle {
     color: string;
     life: number;
 
-    constructor(x: number, y: number) {
+    constructor(x: number, y: number, rocketAngle: number) {
         this.position = { x, y };
-        this.velocity = { x: (Math.random() - 0.5) * 2, y: Math.random() * 3 + 1 };
+        const exhaustSpeed = Math.random() * 2 + 1;
+        // Particles move opposite to rocket's thrust
+        this.velocity = {
+            x: -Math.sin(rocketAngle) * exhaustSpeed + (Math.random() - 0.5) * 1.5,
+            y: Math.cos(rocketAngle) * exhaustSpeed + (Math.random() - 0.5) * 1.5
+        };
         this.radius = Math.random() * 2 + 1;
-        this.life = 100;
-        this.color = `rgba(255, 0, 0, ${this.life / 100})`;
+        this.life = 60; // Shorter lifespan
+        this.color = `rgba(255, 0, 0, 1)`;
     }
 
     draw() {
@@ -62,7 +94,8 @@ class Particle {
 
     update() {
         this.life -= 1;
-        this.color = `rgba(255, 0, 0, ${Math.max(0, this.life / 100)})`;
+        const opacity = Math.max(0, this.life / 60);
+        this.color = `rgba(255, ${opacity * 255}, 0, ${opacity})`; // Fade from red to yellow to transparent
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
         this.draw();
@@ -72,47 +105,45 @@ class Particle {
 const rocket = new Rocket();
 const particles: Particle[] = [];
 
-const keys: { [key: string]: boolean } = {
-    ArrowLeft: false,
-    ArrowRight: false,
-};
-
 window.addEventListener('keydown', (e) => {
-    if (keys.hasOwnProperty(e.key)) {
-        keys[e.key] = true;
+    const rotationAmount = 30 * (Math.PI / 180); // 30 degrees in radians
+    if (e.key === 'ArrowLeft') {
+        rocket.angle -= rotationAmount;
+    } else if (e.key === 'ArrowRight') {
+        rocket.angle += rotationAmount;
     }
 });
 
-window.addEventListener('keyup', (e) => {
-    if (keys.hasOwnProperty(e.key)) {
-        keys[e.key] = false;
-    }
-});
-
-function handleMovement() {
-    if (keys.ArrowLeft) {
-        rocket.velocity.x = -5;
-    } else if (keys.ArrowRight) {
-        rocket.velocity.x = 5;
-    } else {
-        rocket.velocity.x = 0;
-    }
-}
+const gravity: Vector = { x: 0, y: 0.05 };
 
 function gameLoop() {
     requestAnimationFrame(gameLoop);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    rocket.update();
-    handleMovement();
+    // 1. Apply forces
+    const thrustForce: Vector = {
+        x: Math.sin(rocket.angle) * rocket.thrust,
+        y: -Math.cos(rocket.angle) * rocket.thrust
+    };
+    rocket.applyForce(thrustForce);
+    rocket.applyForce(gravity);
 
-    // Add new particles
-    if (Math.random() < 0.5) {
-        particles.push(new Particle(rocket.position.x, rocket.position.y));
+    // 2. Update and draw rocket
+    rocket.update();
+
+    // 3. Check boundaries
+    if (rocket.position.y < -rocket.height || rocket.position.x < 0 || rocket.position.x > canvas.width) {
+        rocket.reset();
     }
 
-    // Update and draw particles
+    // 4. Create particles
+    if (Math.random() > 0.3) { // More particles
+        particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle));
+    }
+
+
+    // 5. Update and draw particles
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.update();
