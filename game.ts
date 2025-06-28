@@ -122,12 +122,59 @@ class Particle {
     }
 }
 
+class Target {
+    position: Vector;
+    velocity: Vector;
+    radius: number;
+
+    constructor() {
+        this.position = { x: Math.random() * canvas.width, y: -30 };
+        const angle = (Math.random() - 0.5) * (Math.PI / 3); // -30 to +30 degrees
+        const speed = 2;
+        this.velocity = {
+            x: Math.sin(angle) * speed,
+            y: Math.cos(angle) * speed
+        };
+        this.radius = 15;
+
+        // Adjust starting position to ensure it doesn't go off-screen
+        const timeToBottom = (canvas.height + this.radius) / this.velocity.y;
+        const finalX = this.position.x + this.velocity.x * timeToBottom;
+
+        if (finalX < 0) {
+            this.position.x = -this.velocity.x * timeToBottom;
+        } else if (finalX > canvas.width) {
+            this.position.x = canvas.width - this.velocity.x * timeToBottom;
+        }
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    update() {
+        this.position.x += this.velocity.x;
+        this.position.y += this.velocity.y;
+        this.draw();
+    }
+}
+
 const rocket = new Rocket();
 const particles: Particle[] = [];
+const targets: Target[] = [];
+let score = 0;
+let lastTargetTime = 0;
+const targetSpawnInterval = 3000; // 3 seconds
+let gameState: 'playing' | 'gameOver' = 'playing';
 
 const keys: { [key: string]: boolean } = {
     ArrowLeft: false,
     ArrowRight: false,
+    ' ': false,
 };
 
 window.addEventListener('keydown', (e) => {
@@ -156,15 +203,74 @@ function handleRotation() {
     }
 }
 
-function gameLoop() {
-    requestAnimationFrame(gameLoop);
-    ctx.fillStyle = 'black'; // Solid background
+function checkCollisions() {
+    for (let i = targets.length - 1; i >= 0; i--) {
+        const target = targets[i];
+        const dx = rocket.position.x - target.position.x;
+        const dy = rocket.position.y - target.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < target.radius + rocket.height / 2) {
+            targets.splice(i, 1);
+            score++;
+        }
+    }
+}
+
+function drawScore() {
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.fillText(`Score: ${score}`, 20, 40);
+}
+
+function drawGameOver() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Handle input
+    ctx.fillStyle = 'white';
+    ctx.font = '48px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 60);
+
+    ctx.font = '36px Arial';
+    ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2);
+
+    ctx.font = '24px Arial';
+    ctx.fillText('Press Space to Play Again', canvas.width / 2, canvas.height / 2 + 60);
+    ctx.textAlign = 'left';
+}
+
+function resetGame() {
+    rocket.reset();
+    particles.length = 0;
+    targets.length = 0;
+    score = 0;
+    lastTargetTime = 0;
+    gameState = 'playing';
+}
+
+function gameLoop(currentTime: number) {
+    requestAnimationFrame(gameLoop);
+
+    if (gameState === 'gameOver') {
+        if (keys[' ']) {
+            resetGame();
+        }
+        drawGameOver();
+        return;
+    }
+
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Spawn new targets
+    if (currentTime - lastTargetTime > targetSpawnInterval) {
+        lastTargetTime = currentTime;
+        targets.push(new Target());
+    }
+
     handleRotation();
 
-    // 2. Apply forces
     const thrustForce: Vector = {
         x: Math.sin(rocket.angle) * rocket.thrust,
         y: -Math.cos(rocket.angle) * rocket.thrust
@@ -172,15 +278,13 @@ function gameLoop() {
     rocket.applyForce(thrustForce);
     rocket.applyForce(gravity);
 
-    // 3. Create particles at the current position
     if (Math.random() > 0.3) {
         particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle, rocket.velocity));
     }
 
-    // 4. Update and draw rocket
     rocket.update();
+    checkCollisions();
 
-    // 5. Check boundaries
     if (
         rocket.position.y < -rocket.height ||
         rocket.position.y > canvas.height + rocket.height ||
@@ -190,7 +294,6 @@ function gameLoop() {
         rocket.reset();
     }
 
-    // 6. Update and draw particles
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.update();
@@ -198,6 +301,16 @@ function gameLoop() {
             particles.splice(i, 1);
         }
     }
+
+    for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i];
+        t.update();
+        if (t.position.y > canvas.height + t.radius) {
+            gameState = 'gameOver';
+        }
+    }
+
+    drawScore();
 }
 
-gameLoop();
+gameLoop(0);
