@@ -1,12 +1,13 @@
 {
     "compilerOptions": {
         "target": "es6",
-        "module": "commonjs",
+        "module": "es6",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "outDir": "./"
+        "outDir": "./dist",
+        "moduleResolution": "node"
     },
     "include": [
         "game.ts"
