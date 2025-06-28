@@ -68,43 +68,53 @@ class Rocket {
 class Particle {
     position: Vector;
     velocity: Vector;
-    radius: number;
+    length: number;
     color: string;
     life: number;
     maxLife: number;
+    angle: number;
 
     constructor(x: number, y: number, rocketAngle: number, rocketVelocity: Vector) {
         this.position = { x, y };
-        const exhaustSpeed = Math.random() * 5 + 2; // Increased initial speed
+        const spread = (Math.random() - 0.5) * (Math.PI / 6); // 30 degrees in radians
+        const angle = rocketAngle + spread;
+        const exhaustSpeed = Math.random() * 5 + 3;
+
         this.velocity = {
-            x: rocketVelocity.x - Math.sin(rocketAngle) * exhaustSpeed,
-            y: rocketVelocity.y + Math.cos(rocketAngle) * exhaustSpeed
+            x: rocketVelocity.x - Math.sin(angle) * exhaustSpeed,
+            y: rocketVelocity.y + Math.cos(angle) * exhaustSpeed
         };
-        this.radius = Math.random() * 2.5 + 1;
-        this.maxLife = 80; // Longer lifespan for a better fade effect
+        this.angle = Math.atan2(this.velocity.y, this.velocity.x);
+        this.length = Math.random() * 5 + 2;
+        this.maxLife = 60;
         this.life = this.maxLife;
-        this.color = 'rgba(255, 0, 0, 1)';
+        this.color = 'rgba(255, 100, 0, 1)'; // Start as bright red-orange
     }
 
     draw() {
+        ctx.save();
+        ctx.translate(this.position.x, this.position.y);
+        ctx.rotate(this.angle);
         ctx.beginPath();
-        ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2, false);
-        ctx.fillStyle = this.color;
-        ctx.fill();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-this.length, 0);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
     }
 
     update() {
         this.life -= 1;
 
-        // Slow down the particle (friction)
-        this.velocity.x *= 0.98;
-        this.velocity.y *= 0.98;
+        this.velocity.x *= 0.97;
+        this.velocity.y *= 0.97;
 
-        // Add random sideways drift
-        this.velocity.x += (Math.random() - 0.5) * 0.1;
-
-        const opacity = Math.max(0, this.life / this.maxLife);
-        this.color = `rgba(255, 0, 0, ${opacity})`; // Fade to black (transparent red)
+        const progress = this.life / this.maxLife;
+        const red = 255;
+        const green = Math.round(100 * progress);
+        const opacity = Math.max(0, progress);
+        this.color = `rgba(${red}, ${green}, 0, ${opacity})`;
 
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
