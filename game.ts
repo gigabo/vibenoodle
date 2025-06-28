@@ -169,21 +169,35 @@ class Explosion {
     maxRadius: number;
     speed: number;
     generation: number;
+    color: string;
 
     constructor(x: number, y: number, generation: number) {
         this.position = { x, y };
         this.radius = 1;
-        this.maxRadius = 200;
-        this.speed = 1.5;
         this.generation = generation;
+        this.maxRadius = 200 * Math.pow(0.8, this.generation - 1);
+        this.speed = 1.5;
+
+        const colors = ['red', 'orange', 'yellow', 'white'];
+        this.color = colors[(this.generation - 1) % colors.length];
     }
 
     draw() {
         const opacity = 1 - this.radius / this.maxRadius;
         ctx.beginPath();
         ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 0, 0, ${opacity})`;
+        ctx.fillStyle = `rgba(${this.colorToRgb(this.color)}, ${opacity})`;
         ctx.fill();
+    }
+
+    colorToRgb(color: string): string {
+        switch (color) {
+            case 'red': return '255, 0, 0';
+            case 'orange': return '255, 165, 0';
+            case 'yellow': return '255, 255, 0';
+            case 'white': return '255, 255, 255';
+            default: return '255, 0, 0';
+        }
     }
 
     update() {
@@ -228,7 +242,8 @@ const explosions: Explosion[] = [];
 const bonusTexts: BonusText[] = [];
 let score = 0;
 let lastTargetTime = 0;
-const targetSpawnInterval = 3000; // 3 seconds
+const initialTargetSpawnInterval = 3000;
+let targetSpawnInterval = initialTargetSpawnInterval;
 let gameState: 'playing' | 'gameOver' = 'playing';
 
 const keys: { [key: string]: boolean } = {
@@ -272,9 +287,11 @@ function checkCollisions() {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < target.radius + rocket.height / 2) {
+            bonusTexts.push(new BonusText(target.position.x, target.position.y, 'x1'));
             explosions.push(new Explosion(target.position.x, target.position.y, 1));
             targets.splice(i, 1);
             score++;
+            targetSpawnInterval *= 0.99;
         }
     }
 
@@ -293,6 +310,7 @@ function checkCollisions() {
                 explosions.push(new Explosion(target.position.x, target.position.y, explosion.generation + 1));
                 targets.splice(j, 1);
                 score += bonus;
+                targetSpawnInterval *= 0.99;
             }
         }
     }
@@ -329,6 +347,7 @@ function resetGame() {
     bonusTexts.length = 0;
     score = 0;
     lastTargetTime = 0;
+    targetSpawnInterval = initialTargetSpawnInterval;
     gameState = 'playing';
 }
 
