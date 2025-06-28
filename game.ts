@@ -75,7 +75,7 @@ class Particle {
 
     constructor(x: number, y: number, rocketAngle: number, rocketVelocity: Vector) {
         this.position = { x, y };
-        const exhaustSpeed = Math.random() * 3 + 2; // Increased initial speed
+        const exhaustSpeed = Math.random() * 5 + 2; // Increased initial speed
         this.velocity = {
             x: rocketVelocity.x - Math.sin(rocketAngle) * exhaustSpeed,
             y: rocketVelocity.y + Math.cos(rocketAngle) * exhaustSpeed
@@ -162,10 +162,15 @@ function gameLoop() {
     rocket.applyForce(thrustForce);
     rocket.applyForce(gravity);
 
-    // 3. Update and draw rocket
+    // 3. Create particles at the current position
+    if (Math.random() > 0.3) {
+        particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle, rocket.velocity));
+    }
+
+    // 4. Update and draw rocket
     rocket.update();
 
-    // 4. Check boundaries
+    // 5. Check boundaries
     if (
         rocket.position.y < -rocket.height ||
         rocket.position.y > canvas.height + rocket.height ||
@@ -173,11 +178,6 @@ function gameLoop() {
         rocket.position.x > canvas.width
     ) {
         rocket.reset();
-    }
-
-    // 5. Create particles
-    if (Math.random() > 0.3) {
-        particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle, rocket.velocity));
     }
 
     // 6. Update and draw particles
