@@ -105,23 +105,46 @@ class Particle {
 const rocket = new Rocket();
 const particles: Particle[] = [];
 
+const keys: { [key: string]: boolean } = {
+    ArrowLeft: false,
+    ArrowRight: false,
+};
+
 window.addEventListener('keydown', (e) => {
-    const rotationAmount = 30 * (Math.PI / 180); // 30 degrees in radians
-    if (e.key === 'ArrowLeft') {
-        rocket.angle -= rotationAmount;
-    } else if (e.key === 'ArrowRight') {
-        rocket.angle += rotationAmount;
+    if (keys.hasOwnProperty(e.key)) {
+        e.preventDefault();
+        keys[e.key] = true;
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (keys.hasOwnProperty(e.key)) {
+        e.preventDefault();
+        keys[e.key] = false;
     }
 });
 
 const gravity: Vector = { x: 0, y: 0.05 };
+const rotationSpeed = 0.05;
+
+function handleRotation() {
+    if (keys.ArrowLeft) {
+        rocket.angle -= rotationSpeed;
+    }
+    if (keys.ArrowRight) {
+        rocket.angle += rotationSpeed;
+    }
+}
 
 function gameLoop() {
     requestAnimationFrame(gameLoop);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillStyle = 'black'; // Solid background
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Apply forces
+    // 1. Handle input
+    handleRotation();
+
+    // 2. Apply forces
     const thrustForce: Vector = {
         x: Math.sin(rocket.angle) * rocket.thrust,
         y: -Math.cos(rocket.angle) * rocket.thrust
@@ -129,21 +152,21 @@ function gameLoop() {
     rocket.applyForce(thrustForce);
     rocket.applyForce(gravity);
 
-    // 2. Update and draw rocket
+    // 3. Update and draw rocket
     rocket.update();
 
-    // 3. Check boundaries
+    // 4. Check boundaries
     if (rocket.position.y < -rocket.height || rocket.position.x < 0 || rocket.position.x > canvas.width) {
         rocket.reset();
     }
 
-    // 4. Create particles
+    // 5. Create particles
     if (Math.random() > 0.3) { // More particles
         particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle));
     }
 
 
-    // 5. Update and draw particles
+    // 6. Update and draw particles
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.update();
