@@ -30,12 +30,12 @@ class Rocket {
 
     reset() {
         this.position = { x: canvas.width / 2, y: canvas.height + this.height };
-        this.velocity = { x: 0, y: -2.5 }; // Initial impulse
+        this.velocity = { x: 0, y: -1.875 }; // Initial impulse
         this.acceleration = { x: 0, y: 0 };
         this.angle = 0;
         this.state = 'launching';
         this.apexReached = false;
-        this.engineIgnitionDelay = 5;
+        this.engineIgnitionDelay = 20;
     }
 
     applyForce(force: Vector) {
@@ -335,9 +335,6 @@ function handleThrust() {
 }
 
 function isRocketCollidingWithCircle(circle: Target | Explosion): boolean {
-    if (rocket.state === 'launching') {
-        return false;
-    }
     const rocketTip = {
         x: rocket.position.x + Math.sin(rocket.angle) * rocket.height,
         y: rocket.position.y - Math.cos(rocket.angle) * rocket.height
