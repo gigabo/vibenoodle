@@ -1,8 +1,8 @@
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+canvas.width = 800;
+canvas.height = 600;
 
 interface Vector {
     x: number;
@@ -24,7 +24,7 @@ class Rocket {
         this.acceleration = { x: 0, y: 0 };
         this.width = 4;
         this.height = 20;
-        this.thrust = 0.075;
+        this.thrust = 0.06;
         this.angle = 0;
     }
 
@@ -135,7 +135,7 @@ class Target {
             x: Math.sin(angle) * speed,
             y: Math.cos(angle) * speed
         };
-        this.radius = 30;
+        this.radius = 18;
 
         // Adjust starting position to ensure it doesn't go off-screen
         const timeToBottom = (canvas.height + this.radius) / this.velocity.y;
@@ -175,7 +175,7 @@ class Explosion {
         this.position = { x, y };
         this.radius = 1;
         this.generation = generation;
-        this.maxRadius = 200 * Math.pow(0.8, this.generation - 1);
+        this.maxRadius = 80 * Math.pow(0.8, this.generation - 1);
         this.speed = 1.5;
 
         const colors = ['red', 'orange', 'yellow', 'white'];
