@@ -74,21 +74,28 @@ class Particle {
     maxLife: number;
     angle: number;
 
-    constructor(x: number, y: number, rocketAngle: number, rocketVelocity: Vector) {
+    constructor(x: number, y: number, rocketAngle: number, rocketVelocity: Vector, isBoosting: boolean) {
         this.position = { x, y };
-        const spread = (Math.random() - 0.5) * (Math.PI / 6); // 30 degrees in radians
+        let spread = (Math.random() - 0.5) * (Math.PI / 6); // 30 degrees in radians
+        let exhaustSpeed = Math.random() * 5 + 3;
+        this.length = Math.random() * 5 + 2;
+
+        if (isBoosting) {
+            exhaustSpeed *= 2;
+            this.length *= 2;
+            spread /= 2;
+        }
+
         const angle = rocketAngle + spread;
-        const exhaustSpeed = Math.random() * 5 + 3;
 
         this.velocity = {
             x: rocketVelocity.x - Math.sin(angle) * exhaustSpeed,
             y: rocketVelocity.y + Math.cos(angle) * exhaustSpeed
         };
         this.angle = Math.atan2(this.velocity.y, this.velocity.x);
-        this.length = Math.random() * 5 + 2;
         this.maxLife = 60;
         this.life = this.maxLife;
-        this.color = 'rgba(255, 100, 0, 1)'; // Start as bright red-orange
+        this.color = isBoosting ? 'rgba(255, 0, 255, 1)' : 'rgba(255, 100, 0, 1)'; // Magenta for boost, red-orange otherwise
     }
 
     draw() {
@@ -111,10 +118,11 @@ class Particle {
         this.velocity.y *= 0.97;
 
         const progress = this.life / this.maxLife;
-        const red = 255;
-        const green = Math.round(100 * progress);
+        const red = this.color.startsWith('rgba(255, 0, 255') ? 255 : 255;
+        const green = this.color.startsWith('rgba(255, 0, 255') ? 0 : Math.round(100 * progress);
+        const blue = this.color.startsWith('rgba(255, 0, 255') ? 255 : 0;
         const opacity = Math.max(0, progress);
-        this.color = `rgba(${red}, ${green}, 0, ${opacity})`;
+        this.color = `rgba(${red}, ${green}, ${blue}, ${opacity})`;
 
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
@@ -249,7 +257,13 @@ let gameState: 'playing' | 'gameOver' = 'playing';
 const keys: { [key: string]: boolean } = {
     ArrowLeft: false,
     ArrowRight: false,
+    ArrowUp: false,
+    ArrowDown: false,
     ' ': false,
+    w: false,
+    a: false,
+    s: false,
+    d: false,
 };
 
 window.addEventListener('keydown', (e) => {
@@ -270,11 +284,34 @@ const gravity: Vector = { x: 0, y: 0.0375 };
 const rotationSpeed = 0.05;
 
 function handleRotation() {
-    if (keys.ArrowLeft) {
+    if (keys.ArrowLeft || keys.a) {
         rocket.angle -= rotationSpeed;
     }
-    if (keys.ArrowRight) {
+    if (keys.ArrowRight || keys.d) {
         rocket.angle += rotationSpeed;
+    }
+}
+
+function handleThrust() {
+    let currentThrust = rocket.thrust;
+    const isBoosting = keys.ArrowUp || keys.w;
+
+    if (isBoosting) {
+        currentThrust *= 4; // Boost
+    } else if (keys.ArrowDown || keys.s) {
+        currentThrust = 0; // Cut thrust
+    }
+
+    if (currentThrust > 0) {
+        const thrustForce: Vector = {
+            x: Math.sin(rocket.angle) * currentThrust,
+            y: -Math.cos(rocket.angle) * currentThrust
+        };
+        rocket.applyForce(thrustForce);
+
+        if (Math.random() > 0.3) {
+            particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle, rocket.velocity, isBoosting));
+        }
     }
 }
 
@@ -400,17 +437,8 @@ function gameLoop(currentTime: number) {
     }
 
     handleRotation();
-
-    const thrustForce: Vector = {
-        x: Math.sin(rocket.angle) * rocket.thrust,
-        y: -Math.cos(rocket.angle) * rocket.thrust
-    };
-    rocket.applyForce(thrustForce);
+    handleThrust();
     rocket.applyForce(gravity);
-
-    if (Math.random() > 0.3) {
-        particles.push(new Particle(rocket.position.x, rocket.position.y, rocket.angle, rocket.velocity));
-    }
 
     rocket.update();
     checkCollisions();
