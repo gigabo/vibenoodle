@@ -10,29 +10,32 @@ interface Vector {
 }
 
 class Rocket {
-    position: Vector;
-    velocity: Vector;
-    acceleration: Vector;
+    position!: Vector;
+    velocity!: Vector;
+    acceleration!: Vector;
     width: number;
     height: number;
     thrust: number;
-    angle: number;
+    angle!: number;
+    state!: 'launching' | 'active';
+    apexReached!: boolean;
+    engineIgnitionDelay!: number;
 
     constructor() {
-        this.position = { x: canvas.width / 2, y: canvas.height - 30 };
-        this.velocity = { x: 0, y: 0 };
-        this.acceleration = { x: 0, y: 0 };
         this.width = 4;
         this.height = 20;
         this.thrust = 0.06;
-        this.angle = 0;
+        this.reset();
     }
 
     reset() {
-        this.position = { x: canvas.width / 2, y: canvas.height - 30 };
-        this.velocity = { x: 0, y: 0 };
+        this.position = { x: canvas.width / 2, y: canvas.height + this.height };
+        this.velocity = { x: 0, y: -2.5 }; // Initial impulse
         this.acceleration = { x: 0, y: 0 };
         this.angle = 0;
+        this.state = 'launching';
+        this.apexReached = false;
+        this.engineIgnitionDelay = 5;
     }
 
     applyForce(force: Vector) {
@@ -56,6 +59,22 @@ class Rocket {
     }
 
     update() {
+        if (this.state === 'launching') {
+            if (this.velocity.y >= 0 && !this.apexReached) {
+                this.apexReached = true;
+            }
+            if (this.apexReached) {
+                this.engineIgnitionDelay--;
+                if (this.engineIgnitionDelay <= 0) {
+                    this.state = 'active';
+                    // Initial particle burst
+                    for (let i = 0; i < 20; i++) {
+                        particles.push(new Particle(this.position.x, this.position.y, this.angle, this.velocity, false));
+                    }
+                }
+            }
+        }
+
         this.velocity.x += this.acceleration.x;
         this.velocity.y += this.acceleration.y;
         this.position.x += this.velocity.x;
@@ -316,6 +335,9 @@ function handleThrust() {
 }
 
 function isRocketCollidingWithCircle(circle: Target | Explosion): boolean {
+    if (rocket.state === 'launching') {
+        return false;
+    }
     const rocketTip = {
         x: rocket.position.x + Math.sin(rocket.angle) * rocket.height,
         y: rocket.position.y - Math.cos(rocket.angle) * rocket.height
@@ -437,8 +459,14 @@ function gameLoop(currentTime: number) {
     }
 
     handleRotation();
-    handleThrust();
+
+    if (rocket.state === 'active') {
+        handleThrust();
+    }
+
     rocket.applyForce(gravity);
+
+    rocket.update();
 
     rocket.update();
     checkCollisions();
