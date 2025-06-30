@@ -5,6 +5,7 @@ const ctx = canvas.getContext('2d')!;
 
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 600;
+const RESTITUTION = 0.8;
 
 canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
@@ -84,6 +85,27 @@ class Effector {
     }
 }
 
+class Barrier {
+    vertices: Vector[];
+    color: string;
+
+    constructor(vertices: Vector[], color: string) {
+        this.vertices = vertices;
+        this.color = color;
+    }
+
+    draw() {
+        ctx.beginPath();
+        ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+        for (let i = 1; i < this.vertices.length; i++) {
+            ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+    }
+}
+
 const ball = new Ball(100, GAME_HEIGHT - 100);
 const effector = new Effector(GAME_WIDTH / 2, GAME_HEIGHT / 2);
 const gravity: Vector = { x: 0, y: 0.5 };
@@ -96,6 +118,68 @@ const effectorCage = {
     width: 200,
     height: 200,
 };
+
+const barriers: Barrier[] = [
+    new Barrier([
+        { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 }, // Top-left
+        { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 100 }, // Top-right of vertical arm
+        { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 10 },  // Inner corner
+        { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 - 10 },  // Top-right of horizontal arm
+        { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 },       // Bottom-right
+        { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
+    ], 'yellow')
+];
+
+function checkCollisions() {
+    // Canvas bounds
+    if (ball.position.x + ball.radius > GAME_WIDTH) {
+        ball.velocity.x *= -RESTITUTION;
+        ball.position.x = GAME_WIDTH - ball.radius;
+    }
+    if (ball.position.x - ball.radius < 0) {
+        ball.velocity.x *= -RESTITUTION;
+        ball.position.x = ball.radius;
+    }
+    if (ball.position.y + ball.radius > GAME_HEIGHT) {
+        ball.velocity.y *= -RESTITUTION;
+        ball.position.y = GAME_HEIGHT - ball.radius;
+    }
+    if (ball.position.y - ball.radius < 0) {
+        ball.velocity.y *= -RESTITUTION;
+        ball.position.y = ball.radius;
+    }
+
+    // Barriers
+    for (const barrier of barriers) {
+        for (let i = 0; i < barrier.vertices.length; i++) {
+            const p1 = barrier.vertices[i];
+            const p2 = barrier.vertices[(i + 1) % barrier.vertices.length];
+
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const lenSq = dx * dx + dy * dy;
+
+            const t = Math.max(0, Math.min(1, ((ball.position.x - p1.x) * dx + (ball.position.y - p1.y) * dy) / lenSq));
+            const closestX = p1.x + t * dx;
+            const closestY = p1.y + t * dy;
+
+            const distSq = (ball.position.x - closestX) * (ball.position.x - closestX) + (ball.position.y - closestY) * (ball.position.y - closestY);
+
+            if (distSq < ball.radius * ball.radius) {
+                const normal = { x: -dy, y: dx };
+                const len = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
+                normal.x /= len;
+                normal.y /= len;
+
+                const dot = ball.velocity.x * normal.x + ball.velocity.y * normal.y;
+                ball.velocity.x -= 2 * dot * normal.x;
+                ball.velocity.y -= 2 * dot * normal.y;
+                ball.velocity.x *= RESTITUTION;
+                ball.velocity.y *= RESTITUTION;
+            }
+        }
+    }
+}
 
 function gameLoop() {
     requestAnimationFrame(gameLoop);
@@ -121,29 +205,16 @@ function gameLoop() {
     ball.velocity.x += gravity.x;
     ball.velocity.y += gravity.y;
 
-    // Bounce off walls with restitution
-    if (ball.position.x + ball.radius > GAME_WIDTH) {
-        ball.velocity.x *= -0.9;
-        ball.position.x = GAME_WIDTH - ball.radius;
-    }
-    if (ball.position.x - ball.radius < 0) {
-        ball.velocity.x *= -0.9;
-        ball.position.x = ball.radius;
-    }
-    if (ball.position.y + ball.radius > GAME_HEIGHT) {
-        ball.velocity.y *= -0.9;
-        ball.position.y = GAME_HEIGHT - ball.radius;
-    }
-    if (ball.position.y - ball.radius < 0) {
-        ball.velocity.y *= -0.9;
-        ball.position.y = ball.radius;
-    }
-
+    checkCollisions();
     ball.update();
 
     // Draw effector cage
     ctx.strokeStyle = 'green';
     ctx.strokeRect(effectorCage.x, effectorCage.y, effectorCage.width, effectorCage.height);
+
+    for (const barrier of barriers) {
+        barrier.draw();
+    }
 
     if (isMouseDown) {
         const dx = effector.position.x - ball.position.x;
@@ -162,6 +233,7 @@ function gameLoop() {
             ctx.moveTo(startX, startY);
             ctx.lineTo(endX, endY);
             ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
             ctx.stroke();
         }
     }
