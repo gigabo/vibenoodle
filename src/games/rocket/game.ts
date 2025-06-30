@@ -1,8 +1,6 @@
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
-// --- Begin new canvas resizing logic ---
-
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 600;
 
@@ -10,25 +8,98 @@ canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
 
 function resizeCanvas() {
+    const wrapper = document.querySelector('.game-wrapper') as HTMLElement;
     const container = document.querySelector('.game-container') as HTMLElement;
-    if (!container) return;
+    const controls = document.getElementById('touch-controls') as HTMLElement;
+    if (!wrapper || !container || !controls) return;
 
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
 
-    const scaleX = containerWidth / GAME_WIDTH;
-    const scaleY = containerHeight / GAME_HEIGHT;
+    // Determine available space for the canvas
+    const availableWidth = windowWidth;
+    let availableHeight = windowHeight;
+
+    // Heuristic to decide layout
+    // If aspect ratio is very wide, use vertical controls
+    // If it's more portrait-like, use horizontal controls
+    const aspectRatio = windowWidth / windowHeight;
+    let layout: 'vertical' | 'horizontal';
+
+    if (aspectRatio > 1.5) { // Wide screen, use side controls
+        layout = 'vertical';
+        wrapper.className = 'game-wrapper layout-vertical';
+        controls.style.display = 'flex';
+    } else { // Narrow or square screen, use bottom controls
+        layout = 'horizontal';
+        wrapper.className = 'game-wrapper layout-horizontal';
+        controls.style.display = 'flex';
+        // Estimate controls height to subtract from available height for canvas
+        availableHeight -= 150; // Approximate height of bottom controls
+    }
+
+
+    const scaleX = availableWidth / GAME_WIDTH;
+    const scaleY = availableHeight / GAME_HEIGHT;
     const scale = Math.min(scaleX, scaleY);
 
     const newWidth = GAME_WIDTH * scale;
     const newHeight = GAME_HEIGHT * scale;
 
+    container.style.width = `${newWidth + 20}px`; // +20 for padding
+    container.style.height = `${newHeight + 20}px`; // +20 for padding
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
+
+    // Hide controls if screen is large enough for keyboard
+    if (windowWidth > 1024) {
+        controls.classList.add('controls-hidden');
+    } else {
+        controls.classList.remove('controls-hidden');
+    }
 }
 
+
 window.addEventListener('resize', resizeCanvas);
-// --- End new canvas resizing logic ---
+
+// --- Touch Controls Logic ---
+function setupTouchControls() {
+    const keyMap: { [key: string]: string } = {
+        'btn-v-up': 'w', 'btn-h-up': 'w',
+        'btn-v-down': 's', 'btn-h-down': 's',
+        'btn-v-left': 'a', 'btn-h-left': 'a',
+        'btn-v-right': 'd', 'btn-h-right': 'd',
+    };
+
+    Object.keys(keyMap).forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            const key = keyMap[buttonId];
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys[key] = true;
+            }, { passive: false });
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys[key] = false;
+            });
+            button.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                keys[key] = true;
+            });
+            button.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                keys[key] = false;
+            });
+             button.addEventListener('mouseleave', (e) => { // In case mouse slides off
+                e.preventDefault();
+                keys[key] = false;
+            });
+        }
+    });
+}
+// --- End Touch Controls ---
+
 
 interface Vector {
     x: number;
@@ -445,7 +516,7 @@ function drawGameOver() {
     ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2);
 
     ctx.font = '24px Arial';
-    ctx.fillText('Press Space to Play Again', canvas.width / 2, canvas.height / 2 + 60);
+    ctx.fillText('Press Space or Tap/Click to Play Again', canvas.width / 2, canvas.height / 2 + 60);
     ctx.textAlign = 'left';
 }
 
@@ -538,5 +609,31 @@ function gameLoop(currentTime: number) {
     drawScore();
 }
 
+// --- Fullscreen Logic ---
+function setupFullscreen() {
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    if (!fullscreenBtn) return;
+
+    fullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    });
+}
+// --- End Fullscreen Logic ---
+
+// Add canvas click listener for restarting game
+canvas.addEventListener('click', () => {
+    if (gameState === 'gameOver') {
+        resetGame();
+    }
+});
+
 gameLoop(0);
 resizeCanvas(); // Initial resize
+setupTouchControls();
+setupFullscreen();

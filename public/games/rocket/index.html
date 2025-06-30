@@ -7,9 +7,52 @@
     <link rel="stylesheet" href="/games/rocket/style.css">
 </head>
 <body>
-    <a href="/" class="home-link">Home</a>
-    <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
+    <div class="top-links">
+        <a href="/" class="home-link">Home</a>
+        <button id="fullscreen-btn">Fullscreen</button>
+    </div>
+    <div class="game-wrapper">
+        <div class="game-container">
+            <canvas id="gameCanvas"></canvas>
+        </div>
+        <div id="touch-controls" class="controls-hidden">
+            <!-- Vertical layout -->
+            <div class="controls-vertical">
+                <div class="control-group-left">
+                    <button id="btn-v-down">
+                        <div class="btn-content"><span>↓/S</span><span class="btn-text">coast</span></div>
+                    </button>
+                    <button id="btn-v-left">
+                        <div class="btn-content"><span>←/A</span><span class="btn-text">left</span></div>
+                    </button>
+                </div>
+                <div class="control-group-right">
+                    <button id="btn-v-up">
+                        <div class="btn-content"><span>↑/W</span><span class="btn-text">boost</span></div>
+                    </button>
+                    <button id="btn-v-right">
+                        <div class="btn-content"><span>→/D</span><span class="btn-text">right</span></div>
+                    </button>
+                </div>
+            </div>
+            <!-- Horizontal layout -->
+            <div class="controls-horizontal">
+                <button id="btn-h-left">
+                    <div class="btn-content"><span>←/A</span><span class="btn-text">left</span></div>
+                </button>
+                <div class="control-group-middle">
+                    <button id="btn-h-up">
+                        <div class="btn-content"><span>↑/W</span><span class="btn-text">boost</span></div>
+                    </button>
+                    <button id="btn-h-down">
+                        <div class="btn-content"><span>↓/S</span><span class="btn-text">coast</span></div>
+                    </button>
+                </div>
+                <button id="btn-h-right">
+                    <div class="btn-content"><span>→/D</span><span class="btn-text">right</span></div>
+                </button>
+            </div>
+        </div>
     </div>
     <script src="/games/rocket/game.js"></script>
 </body>
