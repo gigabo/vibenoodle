@@ -1,8 +1,34 @@
 const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
-canvas.width = 800;
-canvas.height = 600;
+// --- Begin new canvas resizing logic ---
+
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 600;
+
+canvas.width = GAME_WIDTH;
+canvas.height = GAME_HEIGHT;
+
+function resizeCanvas() {
+    const container = document.querySelector('.game-container') as HTMLElement;
+    if (!container) return;
+
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    const scaleX = containerWidth / GAME_WIDTH;
+    const scaleY = containerHeight / GAME_HEIGHT;
+    const scale = Math.min(scaleX, scaleY);
+
+    const newWidth = GAME_WIDTH * scale;
+    const newHeight = GAME_HEIGHT * scale;
+
+    canvas.style.width = `${newWidth}px`;
+    canvas.style.height = `${newHeight}px`;
+}
+
+window.addEventListener('resize', resizeCanvas);
+// --- End new canvas resizing logic ---
 
 interface Vector {
     x: number;
@@ -513,3 +539,4 @@ function gameLoop(currentTime: number) {
 }
 
 gameLoop(0);
+resizeCanvas(); // Initial resize
