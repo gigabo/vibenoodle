@@ -197,3 +197,10 @@ canvas {
     margin-top: 5px;
     text-transform: uppercase;
 }
+
+/* Hide fullscreen button on mobile */
+@media (max-width: 768px) {
+    #fullscreen-btn {
+        display: none;
+    }
+}
