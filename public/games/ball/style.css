@@ -1,0 +1,78 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: #000;
+    overflow: hidden;
+    font-family: sans-serif;
+}
+
+.game-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+    align-items: center;
+}
+
+.game-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: #222;
+    border: 2px solid #444;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    flex-shrink: 0; /* Prevent container from shrinking */
+}
+
+.top-links {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+}
+
+.home-link {
+    color: #00aaff;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 10px;
+}
+
+.home-link:hover {
+    text-decoration: underline;
+}
+
+#fullscreen-btn {
+    background-color: #333;
+    border: 1px solid #666;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 15px;
+    font-size: 14px;
+}
+
+#fullscreen-btn:hover {
+    background-color: #444;
+}
+
+canvas {
+    display: block;
+    background-color: #111;
+}
+
+/* Hide fullscreen button on mobile */
+@media (max-width: 768px) {
+    #fullscreen-btn {
+        display: none;
+    }
+}
