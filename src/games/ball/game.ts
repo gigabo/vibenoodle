@@ -24,8 +24,8 @@ function resizeCanvas() {
     const newWidth = GAME_WIDTH * scale;
     const newHeight = GAME_HEIGHT * scale;
 
-    container.style.width = `${newWidth + 20}px`; // +20 for padding
-    container.style.height = `${newHeight + 20}px`; // +20 for padding
+    container.style.width = `${newWidth + 20}px`;
+    container.style.height = `${newHeight + 20}px`;
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
 }
@@ -61,7 +61,6 @@ class Ball {
     update() {
         this.position.x += this.velocity.x;
         this.position.y += this.velocity.y;
-        this.draw();
     }
 }
 
@@ -104,46 +103,70 @@ function gameLoop() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw effector cage
-    ctx.strokeStyle = 'green';
-    ctx.strokeRect(effectorCage.x, effectorCage.y, effectorCage.width, effectorCage.height);
+    // Update effector position
+    effector.position.x = Math.max(effectorCage.x + effector.radius, Math.min(effectorCage.x + effectorCage.width - effector.radius, mousePosition.x));
+    effector.position.y = Math.max(effectorCage.y + effector.radius, Math.min(effectorCage.y + effectorCage.height - effector.radius, mousePosition.y));
+
+    if (isMouseDown) {
+        const dx = effector.position.x - ball.position.x;
+        const dy = effector.position.y - ball.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > 0) {
+            const force = 2 * gravity.y;
+            ball.velocity.x += (dx / distance) * force;
+            ball.velocity.y += (dy / distance) * force;
+        }
+    }
 
     ball.velocity.x += gravity.x;
     ball.velocity.y += gravity.y;
 
-    // Bounce off walls
-    if (ball.position.x + ball.radius > GAME_WIDTH || ball.position.x - ball.radius < 0) {
-        ball.velocity.x *= -0.98;
-        ball.position.x = Math.max(ball.radius, Math.min(GAME_WIDTH - ball.radius, ball.position.x));
+    // Bounce off walls with restitution
+    if (ball.position.x + ball.radius > GAME_WIDTH) {
+        ball.velocity.x *= -0.9;
+        ball.position.x = GAME_WIDTH - ball.radius;
     }
-    if (ball.position.y + ball.radius > GAME_HEIGHT || ball.position.y - ball.radius < 0) {
-        ball.velocity.y *= -0.98;
-        ball.position.y = Math.max(ball.radius, Math.min(GAME_HEIGHT - ball.radius, ball.position.y));
+    if (ball.position.x - ball.radius < 0) {
+        ball.velocity.x *= -0.9;
+        ball.position.x = ball.radius;
     }
-
-
-    if (isMouseDown) {
-        // Update effector position
-        effector.position.x = Math.max(effectorCage.x, Math.min(effectorCage.x + effectorCage.width, mousePosition.x));
-        effector.position.y = Math.max(effectorCage.y, Math.min(effectorCage.y + effectorCage.height, mousePosition.y));
-
-        // Apply force to ball
-        const dx = effector.position.x - ball.position.x;
-        const dy = effector.position.y - ball.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        const force = 2 * gravity.y;
-        ball.velocity.x += (dx / distance) * force;
-        ball.velocity.y += (dy / distance) * force;
-
-        // Draw line
-        ctx.beginPath();
-        ctx.moveTo(effector.position.x, effector.position.y);
-        ctx.lineTo(ball.position.x, ball.position.y);
-        ctx.strokeStyle = 'white';
-        ctx.stroke();
+    if (ball.position.y + ball.radius > GAME_HEIGHT) {
+        ball.velocity.y *= -0.9;
+        ball.position.y = GAME_HEIGHT - ball.radius;
+    }
+    if (ball.position.y - ball.radius < 0) {
+        ball.velocity.y *= -0.9;
+        ball.position.y = ball.radius;
     }
 
     ball.update();
+
+    // Draw effector cage
+    ctx.strokeStyle = 'green';
+    ctx.strokeRect(effectorCage.x, effectorCage.y, effectorCage.width, effectorCage.height);
+
+    if (isMouseDown) {
+        const dx = effector.position.x - ball.position.x;
+        const dy = effector.position.y - ball.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > 0) {
+            const nx = dx / distance;
+            const ny = dy / distance;
+
+            const startX = effector.position.x - nx * effector.radius;
+            const startY = effector.position.y - ny * effector.radius;
+            const endX = ball.position.x + nx * ball.radius;
+            const endY = ball.position.y + ny * ball.radius;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = 'white';
+            ctx.stroke();
+        }
+    }
+
+    ball.draw();
     effector.draw();
 }
 
@@ -167,9 +190,7 @@ canvas.addEventListener('mouseup', () => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-    if (isMouseDown) {
-        mousePosition = getMousePos(e);
-    }
+    mousePosition = getMousePos(e);
 });
 
 canvas.addEventListener('touchstart', (e) => {
@@ -187,7 +208,6 @@ canvas.addEventListener('touchmove', (e) => {
     }
 });
 
-// --- Fullscreen Logic ---
 function setupFullscreen() {
     const fullscreenBtn = document.getElementById('fullscreen-btn');
     if (!fullscreenBtn) return;
@@ -202,7 +222,6 @@ function setupFullscreen() {
         }
     });
 }
-// --- End Fullscreen Logic ---
 
 resizeCanvas();
 setupFullscreen();
