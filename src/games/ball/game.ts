@@ -169,17 +169,30 @@ function checkCollisions() {
                 const penetrationDepth = ball.radius - Math.sqrt(distSq);
                 const normal = { x: ball.position.x - closestX, y: ball.position.y - closestY };
                 const len = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
+                if (len === 0) continue;
                 normal.x /= len;
                 normal.y /= len;
 
+                // Reposition the ball to the surface
                 ball.position.x += normal.x * penetrationDepth;
                 ball.position.y += normal.y * penetrationDepth;
 
+                const speed = Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y);
+                let timeFraction = 0;
+                if (speed > 0) {
+                    timeFraction = penetrationDepth / speed;
+                }
+
+                // Reflect velocity
                 const dot = ball.velocity.x * normal.x + ball.velocity.y * normal.y;
                 ball.velocity.x -= 2 * dot * normal.x;
                 ball.velocity.y -= 2 * dot * normal.y;
                 ball.velocity.x *= RESTITUTION;
                 ball.velocity.y *= RESTITUTION;
+
+                // Apply new velocity for the remainder of the frame
+                ball.position.x += ball.velocity.x * timeFraction;
+                ball.position.y += ball.velocity.y * timeFraction;
             }
         }
     }
@@ -209,8 +222,8 @@ function gameLoop() {
     ball.velocity.x += gravity.x;
     ball.velocity.y += gravity.y;
 
-    checkCollisions();
     ball.update();
+    checkCollisions();
 
     // Draw effector cage
     ctx.strokeStyle = 'green';
