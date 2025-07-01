@@ -166,10 +166,14 @@ function checkCollisions() {
             const distSq = (ball.position.x - closestX) * (ball.position.x - closestX) + (ball.position.y - closestY) * (ball.position.y - closestY);
 
             if (distSq < ball.radius * ball.radius) {
-                const normal = { x: -dy, y: dx };
+                const penetrationDepth = ball.radius - Math.sqrt(distSq);
+                const normal = { x: ball.position.x - closestX, y: ball.position.y - closestY };
                 const len = Math.sqrt(normal.x * normal.x + normal.y * normal.y);
                 normal.x /= len;
                 normal.y /= len;
+
+                ball.position.x += normal.x * penetrationDepth;
+                ball.position.y += normal.y * penetrationDepth;
 
                 const dot = ball.velocity.x * normal.x + ball.velocity.y * normal.y;
                 ball.velocity.x -= 2 * dot * normal.x;
