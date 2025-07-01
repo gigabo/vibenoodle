@@ -111,6 +111,12 @@ const effector = new Effector(GAME_WIDTH / 2, GAME_HEIGHT / 2);
 const gravity: Vector = { x: 0, y: 0.5 };
 let isMouseDown = false;
 let mousePosition: Vector = { x: 0, y: 0 };
+let isSpringSnapped = false;
+let snapFlashTimer = 0;
+
+const MAX_SPRING_DISTANCE = 600;
+const MAX_FORCE = 4 * gravity.y;
+const SPRING_CONSTANT_K = MAX_FORCE / MAX_SPRING_DISTANCE;
 
 const effectorCage = {
     x: GAME_WIDTH / 2 - 100,
@@ -208,15 +214,29 @@ function gameLoop() {
     effector.position.x = Math.max(effectorCage.x + effector.radius, Math.min(effectorCage.x + effectorCage.width - effector.radius, mousePosition.x));
     effector.position.y = Math.max(effectorCage.y + effector.radius, Math.min(effectorCage.y + effectorCage.height - effector.radius, mousePosition.y));
 
+    if (snapFlashTimer > 0) {
+        snapFlashTimer--;
+    }
+
     if (isMouseDown) {
         const dx = effector.position.x - ball.position.x;
         const dy = effector.position.y - ball.position.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > 0) {
-            const force = 2 * gravity.y;
+
+        if (distance > MAX_SPRING_DISTANCE) {
+            if (!isSpringSnapped) {
+                isSpringSnapped = true;
+                snapFlashTimer = 10; // Flash for 10 frames
+            }
+        }
+
+        if (!isSpringSnapped && distance > 0) {
+            const force = SPRING_CONSTANT_K * distance;
             ball.velocity.x += (dx / distance) * force;
             ball.velocity.y += (dy / distance) * force;
         }
+    } else {
+        isSpringSnapped = false; // Reset when mouse is released
     }
 
     ball.velocity.x += gravity.x;
@@ -237,7 +257,28 @@ function gameLoop() {
         const dx = effector.position.x - ball.position.x;
         const dy = effector.position.y - ball.position.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance > 0) {
+
+        if (snapFlashTimer > 0) {
+            // Flashing white
+            const nx = dx / distance;
+            const ny = dy / distance;
+            const startX = effector.position.x - nx * effector.radius;
+            const startY = effector.position.y - ny * effector.radius;
+            const endX = ball.position.x + nx * ball.radius;
+            const endY = ball.position.y + ny * ball.radius;
+
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        } else if (!isSpringSnapped && distance > 0) {
+            const forceRatio = Math.min(distance / MAX_SPRING_DISTANCE, 1);
+            const red = Math.floor(255 * forceRatio);
+            const green = Math.floor(255 * (1 - forceRatio));
+            const color = `rgb(${red},${green},0)`;
+
             const nx = dx / distance;
             const ny = dy / distance;
 
@@ -249,8 +290,8 @@ function gameLoop() {
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             ctx.lineTo(endX, endY);
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1 + forceRatio * 2; // Line gets thicker too
             ctx.stroke();
         }
     }
