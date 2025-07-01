@@ -1,7 +1,7 @@
 {
-  "name": "viberocket-playground",
+  "name": "vibenoodle",
   "version": "1.0.0",
-  "description": "A playground for web games and toys.",
+  "description": "A 'vibe coded' playground for web games and toys.",
   "main": "public/index.html",
   "scripts": {
     "start": "serve public",
