@@ -112,9 +112,10 @@ const gravity: Vector = { x: 0, y: 0.5 };
 let isMouseDown = false;
 let mousePosition: Vector = { x: 0, y: 0 };
 let isSpringSnapped = false;
-let snapFlashTimer = 0;
+let snapAnimationTimer = 0;
+const SNAP_ANIMATION_DURATION = 20; // 20 frames for the snap animation
 
-const MAX_SPRING_DISTANCE = 600;
+const MAX_SPRING_DISTANCE = 400;
 const MAX_FORCE = 4 * gravity.y;
 const SPRING_CONSTANT_K = MAX_FORCE / MAX_SPRING_DISTANCE;
 
@@ -214,8 +215,8 @@ function gameLoop() {
     effector.position.x = Math.max(effectorCage.x + effector.radius, Math.min(effectorCage.x + effectorCage.width - effector.radius, mousePosition.x));
     effector.position.y = Math.max(effectorCage.y + effector.radius, Math.min(effectorCage.y + effectorCage.height - effector.radius, mousePosition.y));
 
-    if (snapFlashTimer > 0) {
-        snapFlashTimer--;
+    if (snapAnimationTimer > 0) {
+        snapAnimationTimer--;
     }
 
     if (isMouseDown) {
@@ -226,7 +227,7 @@ function gameLoop() {
         if (distance > MAX_SPRING_DISTANCE) {
             if (!isSpringSnapped) {
                 isSpringSnapped = true;
-                snapFlashTimer = 10; // Flash for 10 frames
+                snapAnimationTimer = SNAP_ANIMATION_DURATION;
             }
         }
 
@@ -258,8 +259,11 @@ function gameLoop() {
         const dy = effector.position.y - ball.position.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (snapFlashTimer > 0) {
-            // Flashing white
+        if (snapAnimationTimer > 0) {
+            const animationProgress = (SNAP_ANIMATION_DURATION - snapAnimationTimer) / SNAP_ANIMATION_DURATION;
+            const opacity = 1 - animationProgress;
+            const lineWidth = (1 + 1 * 2) * (1 + animationProgress * 4); // Start at max width and expand 5x
+
             const nx = dx / distance;
             const ny = dy / distance;
             const startX = effector.position.x - nx * effector.radius;
@@ -270,8 +274,8 @@ function gameLoop() {
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             ctx.lineTo(endX, endY);
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+            ctx.lineWidth = lineWidth;
             ctx.stroke();
         } else if (!isSpringSnapped && distance > 0) {
             const forceRatio = Math.min(distance / MAX_SPRING_DISTANCE, 1);
