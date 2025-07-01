@@ -107,17 +107,24 @@ class Barrier {
 }
 
 const ball = new Ball(100, GAME_HEIGHT - 100);
+const initialBallState = {
+    position: { x: ball.position.x, y: ball.position.y },
+    velocity: { x: 0, y: 0 }
+};
 const effector = new Effector(GAME_WIDTH / 2, GAME_HEIGHT / 2);
 const gravity: Vector = { x: 0, y: 0.5 };
 let isMouseDown = false;
 let mousePosition: Vector = { x: 0, y: 0 };
 let isSpringSnapped = false;
 let snapAnimationTimer = 0;
-const SNAP_ANIMATION_DURATION = 20; // 20 frames for the snap animation
+const SNAP_ANIMATION_DURATION = 10; // 10 frames for the snap animation
 
 const MAX_SPRING_DISTANCE = 400;
 const MAX_FORCE = 4 * gravity.y;
 const SPRING_CONSTANT_K = MAX_FORCE / MAX_SPRING_DISTANCE;
+
+let goalTimer = 3;
+let isLevelComplete = false;
 
 const effectorCage = {
     x: GAME_WIDTH / 2 - 100,
@@ -136,6 +143,62 @@ const barriers: Barrier[] = [
         { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
     ], 'yellow')
 ];
+
+class Goal {
+    rect: { x: number, y: number, width: number, height: number };
+    pattern: CanvasPattern | null = null;
+
+    constructor(x: number, y: number, width: number, height: number) {
+        this.rect = { x, y, width, height };
+        this.createPattern();
+    }
+
+    createPattern() {
+        const patternCanvas = document.createElement('canvas');
+        const patternCtx = patternCanvas.getContext('2d')!;
+        const size = 20;
+        patternCanvas.width = size * 2;
+        patternCanvas.height = size * 2;
+
+        patternCtx.fillStyle = '#333'; // Dark gray
+        patternCtx.fillRect(0, 0, size, size);
+        patternCtx.fillRect(size, size, size, size);
+        patternCtx.fillStyle = '#111'; // Near black
+        patternCtx.fillRect(size, 0, size, size);
+        patternCtx.fillRect(0, size, size, size);
+
+        this.pattern = ctx.createPattern(patternCanvas, 'repeat');
+    }
+
+    draw() {
+        if (this.pattern) {
+            ctx.fillStyle = this.pattern;
+            ctx.fillRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
+        }
+    }
+
+    isBallInside(ball: Ball) {
+        return (
+            ball.position.x - ball.radius > this.rect.x &&
+            ball.position.x + ball.radius < this.rect.x + this.rect.width &&
+            ball.position.y - ball.radius > this.rect.y &&
+            ball.position.y + ball.radius < this.rect.y + this.rect.height
+        );
+    }
+}
+
+const goal = new Goal(GAME_WIDTH - 100, GAME_HEIGHT / 3 - 100, 105, 100);
+
+function resetGame() {
+    ball.position.x = initialBallState.position.x;
+    ball.position.y = initialBallState.position.y;
+    ball.velocity.x = initialBallState.velocity.x;
+    ball.velocity.y = initialBallState.velocity.y;
+    goalTimer = 3;
+    isLevelComplete = false;
+    isSpringSnapped = false;
+    snapAnimationTimer = 0;
+}
 
 function checkCollisions() {
     // Canvas bounds
@@ -205,46 +268,67 @@ function checkCollisions() {
     }
 }
 
+function checkGoal() {
+    if (isLevelComplete) return;
+
+    if (goal.isBallInside(ball)) {
+        goalTimer -= 1 / 60; // Assuming 60 FPS
+        if (goalTimer <= 0) {
+            isLevelComplete = true;
+            goalTimer = 0;
+        }
+    } else {
+        goalTimer = 3;
+    }
+}
+
 function gameLoop() {
     requestAnimationFrame(gameLoop);
 
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Update effector position
-    effector.position.x = Math.max(effectorCage.x + effector.radius, Math.min(effectorCage.x + effectorCage.width - effector.radius, mousePosition.x));
-    effector.position.y = Math.max(effectorCage.y + effector.radius, Math.min(effectorCage.y + effectorCage.height - effector.radius, mousePosition.y));
+    if (!isLevelComplete) {
+        // Update effector position
+        effector.position.x = Math.max(effectorCage.x + effector.radius, Math.min(effectorCage.x + effectorCage.width - effector.radius, mousePosition.x));
+        effector.position.y = Math.max(effectorCage.y + effector.radius, Math.min(effectorCage.y + effectorCage.height - effector.radius, mousePosition.y));
 
-    if (snapAnimationTimer > 0) {
-        snapAnimationTimer--;
-    }
+        if (snapAnimationTimer > 0) {
+            snapAnimationTimer--;
+        }
 
-    if (isMouseDown) {
-        const dx = effector.position.x - ball.position.x;
-        const dy = effector.position.y - ball.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (isMouseDown) {
+            const dx = effector.position.x - ball.position.x;
+            const dy = effector.position.y - ball.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance > MAX_SPRING_DISTANCE) {
-            if (!isSpringSnapped) {
-                isSpringSnapped = true;
-                snapAnimationTimer = SNAP_ANIMATION_DURATION;
+            if (distance > MAX_SPRING_DISTANCE) {
+                if (!isSpringSnapped) {
+                    isSpringSnapped = true;
+                    snapAnimationTimer = SNAP_ANIMATION_DURATION;
+                }
             }
+
+            if (!isSpringSnapped && distance > 0) {
+                const force = SPRING_CONSTANT_K * distance;
+                ball.velocity.x += (dx / distance) * force;
+                ball.velocity.y += (dy / distance) * force;
+            }
+        } else {
+            isSpringSnapped = false; // Reset when mouse is released
         }
 
-        if (!isSpringSnapped && distance > 0) {
-            const force = SPRING_CONSTANT_K * distance;
-            ball.velocity.x += (dx / distance) * force;
-            ball.velocity.y += (dy / distance) * force;
-        }
-    } else {
-        isSpringSnapped = false; // Reset when mouse is released
+        ball.velocity.x += gravity.x;
+        ball.velocity.y += gravity.y;
+
+        ball.update();
+        checkCollisions();
+        checkGoal();
     }
 
-    ball.velocity.x += gravity.x;
-    ball.velocity.y += gravity.y;
+    // --- DRAWING ---
 
-    ball.update();
-    checkCollisions();
+    goal.draw();
 
     // Draw effector cage
     ctx.strokeStyle = 'green';
@@ -254,7 +338,7 @@ function gameLoop() {
         barrier.draw();
     }
 
-    if (isMouseDown) {
+    if (isMouseDown && !isLevelComplete) {
         const dx = effector.position.x - ball.position.x;
         const dy = effector.position.y - ball.position.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -302,6 +386,32 @@ function gameLoop() {
 
     ball.draw();
     effector.draw();
+
+    // Draw Timer
+    if (goalTimer < 3 && !isLevelComplete) {
+        const timeRemaining = Math.max(0, goalTimer);
+        const growthFactor = (3 - timeRemaining) / 3; // 0 -> 1
+        const fontSize = 30 + (growthFactor * 30); // 30px -> 60px
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(timeRemaining.toFixed(1), GAME_WIDTH / 2, 20);
+    }
+
+    // Draw Success Message
+    if (isLevelComplete) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+        ctx.fillStyle = 'white';
+        ctx.font = '50px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Success!', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30);
+
+        ctx.font = '20px sans-serif';
+        ctx.fillText('Click to continue', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
+    }
 }
 
 function getMousePos(evt: MouseEvent) {
@@ -315,6 +425,10 @@ function getMousePos(evt: MouseEvent) {
 }
 
 canvas.addEventListener('mousedown', (e) => {
+    if (isLevelComplete) {
+        resetGame();
+        return;
+    }
     isMouseDown = true;
     mousePosition = getMousePos(e);
 });
@@ -328,6 +442,10 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('touchstart', (e) => {
+    if (isLevelComplete) {
+        resetGame();
+        return;
+    }
     isMouseDown = true;
     mousePosition = getMousePos(e.touches[0] as any);
 });
