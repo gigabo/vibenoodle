@@ -349,16 +349,22 @@ function checkGoal() {
 
 let isEditMode = false;
 const editModeBtn = document.getElementById('edit-mode-btn') as HTMLButtonElement;
+const showJsonBtn = document.getElementById('show-json-btn') as HTMLButtonElement;
+const jsonModal = document.getElementById('json-modal') as HTMLDivElement;
+const jsonPre = document.getElementById('json-pre') as HTMLPreElement;
+const closeBtn = document.querySelector('.close-btn') as HTMLSpanElement;
 
 function enterEditMode() {
     isEditMode = true;
     editModeBtn.textContent = 'Play Level';
+    showJsonBtn.style.display = 'inline-block';
     resetGame();
 }
 
 function exitEditMode() {
     isEditMode = false;
     editModeBtn.textContent = 'Edit Level';
+    showJsonBtn.style.display = 'none';
     resetGame();
 }
 
@@ -367,6 +373,26 @@ editModeBtn.addEventListener('click', () => {
         exitEditMode();
     } else {
         enterEditMode();
+    }
+});
+
+showJsonBtn.addEventListener('click', () => {
+    const levelJson = {
+        barriers: currentLevel.barriers.map(b => ({ vertices: b.vertices, color: b.color })),
+        goal: { vertices: currentLevel.goal.vertices },
+        effectorCage: { vertices: currentLevel.effectorCage.vertices }
+    };
+    jsonPre.textContent = JSON.stringify(levelJson, null, 2);
+    jsonModal.style.display = 'block';
+});
+
+closeBtn.addEventListener('click', () => {
+    jsonModal.style.display = 'none';
+});
+
+window.addEventListener('click', (event) => {
+    if (event.target == jsonModal) {
+        jsonModal.style.display = 'none';
     }
 });
 

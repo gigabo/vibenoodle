@@ -14,11 +14,18 @@
     <div class="game-wrapper">
         <div class="control-panel">
             <button id="edit-mode-btn">Edit Level</button>
+            <button id="show-json-btn" style="display: none;">Show JSON</button>
         </div>
         <div class="game-container">
             <canvas id="gameCanvas"></canvas>
         </div>
         <div class="panel-placeholder"></div>
+    </div>
+    <div id="json-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <pre id="json-pre"></pre>
+        </div>
     </div>
     <script src="/games/ball/game.js" type="module"></script>
 </body>
