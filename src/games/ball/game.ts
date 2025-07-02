@@ -375,13 +375,36 @@ function checkGoal() {
     }
 }
 
+let isEditMode = false;
+const editModeBtn = document.getElementById('edit-mode-btn') as HTMLButtonElement;
+
+function enterEditMode() {
+    isEditMode = true;
+    editModeBtn.textContent = 'Play Level';
+    resetGame();
+}
+
+function exitEditMode() {
+    isEditMode = false;
+    editModeBtn.textContent = 'Edit Level';
+    resetGame();
+}
+
+editModeBtn.addEventListener('click', () => {
+    if (isEditMode) {
+        exitEditMode();
+    } else {
+        enterEditMode();
+    }
+});
+
 function gameLoop() {
     requestAnimationFrame(gameLoop);
 
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (!isLevelComplete) {
+    if (!isLevelComplete && !isEditMode) {
         // Update effector position
         if (effectorCage.isPointInside(mousePosition)) {
             effector.position.x = mousePosition.x;
@@ -447,6 +470,40 @@ function gameLoop() {
         ball.update();
         checkCollisions();
         checkGoal();
+    } else if (isEditMode) {
+        // In edit mode, we still want to be able to move the effector
+        if (effectorCage.isPointInside(mousePosition)) {
+            effector.position.x = mousePosition.x;
+            effector.position.y = mousePosition.y;
+        } else {
+            // Find the closest point on the polygon's boundary
+            let closestPoint: Vector | null = null;
+            let minDistanceSq = Infinity;
+
+            for (let i = 0; i < effectorCage.vertices.length; i++) {
+                const p1 = effectorCage.vertices[i];
+                const p2 = effectorCage.vertices[(i + 1) % effectorCage.vertices.length];
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const lenSq = dx * dx + dy * dy;
+
+                const t = Math.max(0, Math.min(1, ((mousePosition.x - p1.x) * dx + (mousePosition.y - p1.y) * dy) / lenSq));
+                const closestX = p1.x + t * dx;
+                const closestY = p1.y + t * dy;
+
+                const distSq = (mousePosition.x - closestX) * (mousePosition.x - closestX) + (mousePosition.y - closestY) * (mousePosition.y - closestY);
+
+                if (distSq < minDistanceSq) {
+                    minDistanceSq = distSq;
+                    closestPoint = { x: closestX, y: closestY };
+                }
+            }
+            if (closestPoint) {
+                effector.position.x = closestPoint.x;
+                effector.position.y = closestPoint.y;
+            }
+        }
     }
 
     // --- DRAWING ---
@@ -460,7 +517,7 @@ function gameLoop() {
         barrier.draw();
     }
 
-    if (isMouseDown && !isLevelComplete) {
+    if (isMouseDown && !isLevelComplete && !isEditMode) {
         const dx = effector.position.x - ball.position.x;
         const dy = effector.position.y - ball.position.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -506,7 +563,9 @@ function gameLoop() {
         }
     }
 
-    ball.draw();
+    if (!isEditMode) {
+        ball.draw();
+    }
     effector.draw();
 
     // Draw Timer
