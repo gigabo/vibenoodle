@@ -431,74 +431,8 @@ function gameLoop() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (!isLevelComplete && !isEditMode) {
-        // Update effector position
-        if (effectorCage.isPointInside(mousePosition)) {
-            effector.position.x = mousePosition.x;
-            effector.position.y = mousePosition.y;
-        } else {
-            // Find the closest point on the polygon's boundary
-            let closestPoint: Vector | null = null;
-            let minDistanceSq = Infinity;
-
-            for (let i = 0; i < effectorCage.vertices.length; i++) {
-                const p1 = effectorCage.vertices[i];
-                const p2 = effectorCage.vertices[(i + 1) % effectorCage.vertices.length];
-
-                const dx = p2.x - p1.x;
-                const dy = p2.y - p1.y;
-                const lenSq = dx * dx + dy * dy;
-
-                const t = Math.max(0, Math.min(1, ((mousePosition.x - p1.x) * dx + (mousePosition.y - p1.y) * dy) / lenSq));
-                const closestX = p1.x + t * dx;
-                const closestY = p1.y + t * dy;
-
-                const distSq = (mousePosition.x - closestX) * (mousePosition.x - closestX) + (mousePosition.y - closestY) * (mousePosition.y - closestY);
-
-                if (distSq < minDistanceSq) {
-                    minDistanceSq = distSq;
-                    closestPoint = { x: closestX, y: closestY };
-                }
-            }
-            if (closestPoint) {
-                effector.position.x = closestPoint.x;
-                effector.position.y = closestPoint.y;
-            }
-        }
-
-        if (snapAnimationTimer > 0) {
-            snapAnimationTimer--;
-        }
-
-        if (isMouseDown) {
-            const dx = effector.position.x - ball.position.x;
-            const dy = effector.position.y - ball.position.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance > MAX_SPRING_DISTANCE) {
-                if (!isSpringSnapped) {
-                    isSpringSnapped = true;
-                    snapAnimationTimer = SNAP_ANIMATION_DURATION;
-                }
-            }
-
-            if (!isSpringSnapped && distance > 0) {
-                const force = SPRING_CONSTANT_K * distance;
-                ball.velocity.x += (dx / distance) * force;
-                ball.velocity.y += (dy / distance) * force;
-            }
-        } else {
-            isSpringSnapped = false; // Reset when mouse is released
-        }
-
-        ball.velocity.x += gravity.x;
-        ball.velocity.y += gravity.y;
-
-        ball.update();
-        checkCollisions();
-        checkGoal();
-    } else if (isEditMode) {
-        // In edit mode, we still want to be able to move the effector
+    // Always update effector position if level is not complete
+    if (!isLevelComplete) {
         if (effectorCage.isPointInside(mousePosition)) {
             effector.position.x = mousePosition.x;
             effector.position.y = mousePosition.y;
@@ -533,11 +467,44 @@ function gameLoop() {
         }
     }
 
+    // Handle game physics and interactions only in play mode
+    if (!isLevelComplete && !isEditMode) {
+        if (snapAnimationTimer > 0) {
+            snapAnimationTimer--;
+        }
+
+        if (isMouseDown) {
+            const dx = effector.position.x - ball.position.x;
+            const dy = effector.position.y - ball.position.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > MAX_SPRING_DISTANCE) {
+                if (!isSpringSnapped) {
+                    isSpringSnapped = true;
+                    snapAnimationTimer = SNAP_ANIMATION_DURATION;
+                }
+            }
+
+            if (!isSpringSnapped && distance > 0) {
+                const force = SPRING_CONSTANT_K * distance;
+                ball.velocity.x += (dx / distance) * force;
+                ball.velocity.y += (dy / distance) * force;
+            }
+        } else {
+            isSpringSnapped = false; // Reset when mouse is released
+        }
+
+        ball.velocity.x += gravity.x;
+        ball.velocity.y += gravity.y;
+
+        ball.update();
+        checkCollisions();
+        checkGoal();
+    }
+
     // --- DRAWING ---
 
     goal.draw();
-
-    // Draw effector cage
     effectorCage.drawStroke('green', 1);
 
     for (const barrier of barriers) {
@@ -592,8 +559,8 @@ function gameLoop() {
 
     if (!isEditMode) {
         ball.draw();
+        effector.draw();
     }
-    effector.draw();
 
     // Draw Timer
     if (goalTimer < 3 && !isLevelComplete) {
