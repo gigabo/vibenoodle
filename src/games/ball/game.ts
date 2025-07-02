@@ -85,7 +85,7 @@ class Effector {
     }
 }
 
-class Barrier {
+class Polygon {
     vertices: Vector[];
     color: string;
 
@@ -104,14 +104,47 @@ class Barrier {
         ctx.fillStyle = this.color;
         ctx.fill();
     }
+
+    drawStroke(color: string, lineWidth: number) {
+        ctx.beginPath();
+        ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+        for (let i = 1; i < this.vertices.length; i++) {
+            ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.stroke();
+    }
+
+    // Point-in-polygon test for convex polygons
+    isPointInside(point: Vector): boolean {
+        const n = this.vertices.length;
+        if (n < 3) return false;
+
+        let lastSign = 0;
+        for (let i = 0; i < n; i++) {
+            const p1 = this.vertices[i];
+            const p2 = this.vertices[(i + 1) % n];
+            const d = (point.x - p1.x) * (p2.y - p1.y) - (point.y - p1.y) * (p2.x - p1.x);
+
+            if (i === 0) {
+                lastSign = Math.sign(d);
+            } else {
+                if (Math.sign(d) !== lastSign) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }
 
-class Goal {
-    rect: { x: number, y: number, width: number, height: number };
+class Goal extends Polygon {
     pattern: CanvasPattern | null = null;
 
-    constructor(x: number, y: number, width: number, height: number) {
-        this.rect = { x, y, width, height };
+    constructor(vertices: Vector[]) {
+        super(vertices, ''); // Color is not used, pattern is
         this.createPattern();
     }
 
@@ -133,21 +166,24 @@ class Goal {
     }
 
     draw() {
-        if (this.pattern) {
-            ctx.fillStyle = this.pattern;
-            ctx.fillRect(this.rect.x, this.rect.y, this.rect.width, this.rect.height);
+        if (!this.pattern) return;
+
+        ctx.beginPath();
+        ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+        for (let i = 1; i < this.vertices.length; i++) {
+            ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
         }
+        ctx.closePath();
+        ctx.fillStyle = this.pattern;
+        ctx.fill();
     }
 
     isBallInside(ball: Ball) {
-        return (
-            ball.position.x - ball.radius > this.rect.x &&
-            ball.position.x + ball.radius < this.rect.x + this.rect.width &&
-            ball.position.y - ball.radius > this.rect.y &&
-            ball.position.y + ball.radius < this.rect.y + this.rect.height
-        );
+        return this.isPointInside(ball.position);
     }
 }
+
+class Barrier extends Polygon {}
 
 const ball = new Ball(100, GAME_HEIGHT - 100);
 const initialBallState = {
@@ -172,12 +208,7 @@ let isLevelComplete = false;
 interface Level {
     barriers: Barrier[];
     goal: Goal;
-    effectorCage: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    };
+    effectorCage: Polygon;
 }
 
 const levels: Level[] = [
@@ -192,32 +223,42 @@ const levels: Level[] = [
                 { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
             ], 'yellow')
         ],
-        goal: new Goal(GAME_WIDTH - 100, GAME_HEIGHT / 3 - 100, 105, 100),
-        effectorCage: {
-            x: GAME_WIDTH / 2 - 100,
-            y: GAME_HEIGHT / 2 - 100,
-            width: 200,
-            height: 200,
-        }
+        goal: new Goal([
+            { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 },
+            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 - 100 },
+            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 },
+            { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },
+        ]),
+        effectorCage: new Polygon([
+            { x: GAME_WIDTH / 2 - 100, y: GAME_HEIGHT / 2 - 100 },
+            { x: GAME_WIDTH / 2 + 100, y: GAME_HEIGHT / 2 - 100 },
+            { x: GAME_WIDTH / 2 + 100, y: GAME_HEIGHT / 2 + 100 },
+            { x: GAME_WIDTH / 2 - 100, y: GAME_HEIGHT / 2 + 100 },
+        ], '')
     },
     {
         barriers: [
             new Barrier([
-                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 }, // Top-left
-                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 100 }, // Top-right of vertical arm
+                { x: GAME_WIDTH - 120, y: GAME_HEIGHT / 3 - 50 }, // Top-left
+                { x: GAME_WIDTH - 110, y: GAME_HEIGHT / 3 - 50 }, // Top-right of vertical arm
                 { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 10 },  // Inner corner
                 { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 - 10 },  // Top-right of horizontal arm
                 { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 },       // Bottom-right
-                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
+                { x: GAME_WIDTH - 110, y: GAME_HEIGHT / 3 },       // Bottom-left
             ], 'yellow')
         ],
-        goal: new Goal(GAME_WIDTH - 100, GAME_HEIGHT / 3 - 100, 105, 100),
-        effectorCage: {
-            x: GAME_WIDTH / 2 - 50,
-            y: GAME_HEIGHT / 2 - 50,
-            width: 100,
-            height: 100,
-        }
+        goal: new Goal([
+            { x: GAME_WIDTH - 120, y: GAME_HEIGHT / 3 - 50 },
+            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 - 50 },
+            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 },
+            { x: GAME_WIDTH - 110, y: GAME_HEIGHT / 3 },
+        ]),
+        effectorCage: new Polygon([
+            { x: GAME_WIDTH / 2 - 50, y: GAME_HEIGHT / 2 - 100 },
+            { x: GAME_WIDTH / 2 + 50, y: GAME_HEIGHT / 2 - 100 },
+            { x: GAME_WIDTH / 2 + 100, y: GAME_HEIGHT / 2 + 100 },
+            { x: GAME_WIDTH / 2 - 100, y: GAME_HEIGHT / 2 + 100 },
+        ], '')
     }
 ];
 
@@ -342,8 +383,38 @@ function gameLoop() {
 
     if (!isLevelComplete) {
         // Update effector position
-        effector.position.x = Math.max(effectorCage.x + effector.radius, Math.min(effectorCage.x + effectorCage.width - effector.radius, mousePosition.x));
-        effector.position.y = Math.max(effectorCage.y + effector.radius, Math.min(effectorCage.y + effectorCage.height - effector.radius, mousePosition.y));
+        if (effectorCage.isPointInside(mousePosition)) {
+            effector.position.x = mousePosition.x;
+            effector.position.y = mousePosition.y;
+        } else {
+            // Find the closest point on the polygon's boundary
+            let closestPoint: Vector | null = null;
+            let minDistanceSq = Infinity;
+
+            for (let i = 0; i < effectorCage.vertices.length; i++) {
+                const p1 = effectorCage.vertices[i];
+                const p2 = effectorCage.vertices[(i + 1) % effectorCage.vertices.length];
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const lenSq = dx * dx + dy * dy;
+
+                const t = Math.max(0, Math.min(1, ((mousePosition.x - p1.x) * dx + (mousePosition.y - p1.y) * dy) / lenSq));
+                const closestX = p1.x + t * dx;
+                const closestY = p1.y + t * dy;
+
+                const distSq = (mousePosition.x - closestX) * (mousePosition.x - closestX) + (mousePosition.y - closestY) * (mousePosition.y - closestY);
+
+                if (distSq < minDistanceSq) {
+                    minDistanceSq = distSq;
+                    closestPoint = { x: closestX, y: closestY };
+                }
+            }
+            if (closestPoint) {
+                effector.position.x = closestPoint.x;
+                effector.position.y = closestPoint.y;
+            }
+        }
 
         if (snapAnimationTimer > 0) {
             snapAnimationTimer--;
@@ -383,8 +454,7 @@ function gameLoop() {
     goal.draw();
 
     // Draw effector cage
-    ctx.strokeStyle = 'green';
-    ctx.strokeRect(effectorCage.x, effectorCage.y, effectorCage.width, effectorCage.height);
+    effectorCage.drawStroke('green', 1);
 
     for (const barrier of barriers) {
         barrier.draw();
