@@ -106,44 +106,6 @@ class Barrier {
     }
 }
 
-const ball = new Ball(100, GAME_HEIGHT - 100);
-const initialBallState = {
-    position: { x: ball.position.x, y: ball.position.y },
-    velocity: { x: 0, y: 0 }
-};
-const effector = new Effector(GAME_WIDTH / 2, GAME_HEIGHT / 2);
-const gravity: Vector = { x: 0, y: 0.5 };
-let isMouseDown = false;
-let mousePosition: Vector = { x: 0, y: 0 };
-let isSpringSnapped = false;
-let snapAnimationTimer = 0;
-const SNAP_ANIMATION_DURATION = 10; // 10 frames for the snap animation
-
-const MAX_SPRING_DISTANCE = 400;
-const MAX_FORCE = 4 * gravity.y;
-const SPRING_CONSTANT_K = MAX_FORCE / MAX_SPRING_DISTANCE;
-
-let goalTimer = 3;
-let isLevelComplete = false;
-
-const effectorCage = {
-    x: GAME_WIDTH / 2 - 100,
-    y: GAME_HEIGHT / 2 - 100,
-    width: 200,
-    height: 200,
-};
-
-const barriers: Barrier[] = [
-    new Barrier([
-        { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 }, // Top-left
-        { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 100 }, // Top-right of vertical arm
-        { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 10 },  // Inner corner
-        { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 - 10 },  // Top-right of horizontal arm
-        { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 },       // Bottom-right
-        { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
-    ], 'yellow')
-];
-
 class Goal {
     rect: { x: number, y: number, width: number, height: number };
     pattern: CanvasPattern | null = null;
@@ -187,7 +149,97 @@ class Goal {
     }
 }
 
-const goal = new Goal(GAME_WIDTH - 100, GAME_HEIGHT / 3 - 100, 105, 100);
+const ball = new Ball(100, GAME_HEIGHT - 100);
+const initialBallState = {
+    position: { x: ball.position.x, y: ball.position.y },
+    velocity: { x: 0, y: 0 }
+};
+const effector = new Effector(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+const gravity: Vector = { x: 0, y: 0.5 };
+let isMouseDown = false;
+let mousePosition: Vector = { x: 0, y: 0 };
+let isSpringSnapped = false;
+let snapAnimationTimer = 0;
+const SNAP_ANIMATION_DURATION = 10; // 10 frames for the snap animation
+
+const MAX_SPRING_DISTANCE = 400;
+const MAX_FORCE = 4 * gravity.y;
+const SPRING_CONSTANT_K = MAX_FORCE / MAX_SPRING_DISTANCE;
+
+let goalTimer = 3;
+let isLevelComplete = false;
+
+interface Level {
+    barriers: Barrier[];
+    goal: Goal;
+    effectorCage: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
+}
+
+const levels: Level[] = [
+    {
+        barriers: [
+            new Barrier([
+                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 }, // Top-left
+                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 100 }, // Top-right of vertical arm
+                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 10 },  // Inner corner
+                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 - 10 },  // Top-right of horizontal arm
+                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 },       // Bottom-right
+                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
+            ], 'yellow')
+        ],
+        goal: new Goal(GAME_WIDTH - 100, GAME_HEIGHT / 3 - 100, 105, 100),
+        effectorCage: {
+            x: GAME_WIDTH / 2 - 100,
+            y: GAME_HEIGHT / 2 - 100,
+            width: 200,
+            height: 200,
+        }
+    },
+    {
+        barriers: [
+            new Barrier([
+                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 }, // Top-left
+                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 100 }, // Top-right of vertical arm
+                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 10 },  // Inner corner
+                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 - 10 },  // Top-right of horizontal arm
+                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 },       // Bottom-right
+                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
+            ], 'yellow')
+        ],
+        goal: new Goal(GAME_WIDTH - 100, GAME_HEIGHT / 3 - 100, 105, 100),
+        effectorCage: {
+            x: GAME_WIDTH / 2 - 50,
+            y: GAME_HEIGHT / 2 - 50,
+            width: 100,
+            height: 100,
+        }
+    }
+];
+
+let currentLevelIndex = 0;
+let currentLevel = levels[currentLevelIndex];
+let barriers = currentLevel.barriers;
+let goal = currentLevel.goal;
+let effectorCage = currentLevel.effectorCage;
+
+function loadLevel(levelIndex: number) {
+    currentLevelIndex = levelIndex;
+    if (currentLevelIndex >= levels.length) {
+        currentLevelIndex = 0;
+    }
+    currentLevel = levels[currentLevelIndex];
+    barriers = currentLevel.barriers;
+    goal = currentLevel.goal;
+    effectorCage = currentLevel.effectorCage;
+    resetGame();
+}
+
+
 
 function resetGame() {
     ball.position.x = initialBallState.position.x;
@@ -426,7 +478,7 @@ function getMousePos(evt: MouseEvent) {
 
 canvas.addEventListener('mousedown', (e) => {
     if (isLevelComplete) {
-        resetGame();
+        loadLevel(currentLevelIndex + 1);
         return;
     }
     isMouseDown = true;
@@ -443,7 +495,7 @@ canvas.addEventListener('mousemove', (e) => {
 
 canvas.addEventListener('touchstart', (e) => {
     if (isLevelComplete) {
-        resetGame();
+        loadLevel(currentLevelIndex + 1);
         return;
     }
     isMouseDown = true;
