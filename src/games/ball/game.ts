@@ -226,11 +226,14 @@ async function loadLevels() {
         }
         const levelsData = await response.json();
 
-        levels = levelsData.map((levelData: any) => ({
-            barriers: levelData.barriers.map((b: any) => new Barrier(b.vertices, b.color)),
-            goal: new Goal(levelData.goal.vertices),
-            effectorCage: new Polygon(levelData.effectorCage.vertices, '')
-        }));
+        levels = levelsData.map((levelData: any) => {
+            const parseVertices = (verts: [number, number][]): Vector[] => verts.map(v => ({ x: v[0], y: v[1] }));
+            return {
+                barriers: levelData.barriers.map((b: any) => new Barrier(parseVertices(b.vertices), b.color)),
+                goal: new Goal(parseVertices(levelData.goal.vertices)),
+                effectorCage: new Polygon(parseVertices(levelData.effectorCage.vertices), '')
+            };
+        });
 
         loadLevel(0);
         gameLoop(); // Start the game loop only after levels are loaded
@@ -377,10 +380,14 @@ editModeBtn.addEventListener('click', () => {
 });
 
 showJsonBtn.addEventListener('click', () => {
+    const formatVertices = (verts: Vector[]) => verts.map(v => [v.x, v.y]);
     const levelJson = {
-        barriers: currentLevel.barriers.map(b => ({ vertices: b.vertices, color: b.color })),
-        goal: { vertices: currentLevel.goal.vertices },
-        effectorCage: { vertices: currentLevel.effectorCage.vertices }
+        barriers: currentLevel.barriers.map(b => ({
+            vertices: formatVertices(b.vertices),
+            color: b.color
+        })),
+        goal: { vertices: formatVertices(currentLevel.goal.vertices) },
+        effectorCage: { vertices: formatVertices(currentLevel.effectorCage.vertices) }
     };
     jsonPre.textContent = JSON.stringify(levelJson, null, 2);
     jsonModal.style.display = 'block';
