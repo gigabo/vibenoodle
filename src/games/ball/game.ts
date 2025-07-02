@@ -211,62 +211,34 @@ interface Level {
     effectorCage: Polygon;
 }
 
-const levels: Level[] = [
-    {
-        barriers: [
-            new Barrier([
-                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 }, // Top-left
-                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 100 }, // Top-right of vertical arm
-                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 10 },  // Inner corner
-                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 - 10 },  // Top-right of horizontal arm
-                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 },       // Bottom-right
-                { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },       // Bottom-left
-            ], 'yellow')
-        ],
-        goal: new Goal([
-            { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 - 100 },
-            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 - 100 },
-            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 },
-            { x: GAME_WIDTH - 100, y: GAME_HEIGHT / 3 },
-        ]),
-        effectorCage: new Polygon([
-            { x: GAME_WIDTH / 2 - 100, y: GAME_HEIGHT / 2 - 100 },
-            { x: GAME_WIDTH / 2 + 100, y: GAME_HEIGHT / 2 - 100 },
-            { x: GAME_WIDTH / 2 + 100, y: GAME_HEIGHT / 2 + 100 },
-            { x: GAME_WIDTH / 2 - 100, y: GAME_HEIGHT / 2 + 100 },
-        ], '')
-    },
-    {
-        barriers: [
-            new Barrier([
-                { x: GAME_WIDTH - 120, y: GAME_HEIGHT / 3 - 50 }, // Top-left
-                { x: GAME_WIDTH - 110, y: GAME_HEIGHT / 3 - 50 }, // Top-right of vertical arm
-                { x: GAME_WIDTH - 90,  y: GAME_HEIGHT / 3 - 10 },  // Inner corner
-                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 - 10 },  // Top-right of horizontal arm
-                { x: GAME_WIDTH,       y: GAME_HEIGHT / 3 },       // Bottom-right
-                { x: GAME_WIDTH - 110, y: GAME_HEIGHT / 3 },       // Bottom-left
-            ], 'yellow')
-        ],
-        goal: new Goal([
-            { x: GAME_WIDTH - 120, y: GAME_HEIGHT / 3 - 50 },
-            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 - 50 },
-            { x: GAME_WIDTH, y: GAME_HEIGHT / 3 },
-            { x: GAME_WIDTH - 110, y: GAME_HEIGHT / 3 },
-        ]),
-        effectorCage: new Polygon([
-            { x: GAME_WIDTH / 2 - 50, y: GAME_HEIGHT / 2 - 100 },
-            { x: GAME_WIDTH / 2 + 50, y: GAME_HEIGHT / 2 - 100 },
-            { x: GAME_WIDTH / 2 + 100, y: GAME_HEIGHT / 2 + 100 },
-            { x: GAME_WIDTH / 2 - 100, y: GAME_HEIGHT / 2 + 100 },
-        ], '')
-    }
-];
-
+let levels: Level[] = [];
 let currentLevelIndex = 0;
-let currentLevel = levels[currentLevelIndex];
-let barriers = currentLevel.barriers;
-let goal = currentLevel.goal;
-let effectorCage = currentLevel.effectorCage;
+let currentLevel: Level;
+let barriers: Barrier[];
+let goal: Goal;
+let effectorCage: Polygon;
+
+async function loadLevels() {
+    try {
+        const response = await fetch('/games/ball/levels.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const levelsData = await response.json();
+
+        levels = levelsData.map((levelData: any) => ({
+            barriers: levelData.barriers.map((b: any) => new Barrier(b.vertices, b.color)),
+            goal: new Goal(levelData.goal.vertices),
+            effectorCage: new Polygon(levelData.effectorCage.vertices, '')
+        }));
+
+        loadLevel(0);
+        gameLoop(); // Start the game loop only after levels are loaded
+    } catch (error) {
+        console.error("Could not load levels:", error);
+    }
+}
+
 
 function loadLevel(levelIndex: number) {
     currentLevelIndex = levelIndex;
@@ -658,4 +630,4 @@ function setupFullscreen() {
 
 resizeCanvas();
 setupFullscreen();
-gameLoop();
+loadLevels();
