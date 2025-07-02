@@ -389,7 +389,29 @@ showJsonBtn.addEventListener('click', () => {
         goal: { vertices: formatVertices(currentLevel.goal.vertices) },
         effectorCage: { vertices: formatVertices(currentLevel.effectorCage.vertices) }
     };
-    jsonPre.textContent = JSON.stringify(levelJson, null, 2);
+
+    // Custom stringification to keep vertex arrays on one line
+    const placeholders = new Map<string, string>();
+    let placeholderIndex = 0;
+
+    const replacer = (key: string, value: any) => {
+        if (key === 'vertices') {
+            return value.map((vertex: [number, number]) => {
+                const placeholder = `%%VERTEX_${placeholderIndex++}%%`;
+                placeholders.set(placeholder, `[${vertex[0]}, ${vertex[1]}]`);
+                return placeholder;
+            });
+        }
+        return value;
+    };
+
+    let jsonString = JSON.stringify(levelJson, replacer, 2);
+
+    for (const [placeholder, vertexString] of placeholders.entries()) {
+        jsonString = jsonString.replace(`"${placeholder}"`, vertexString);
+    }
+
+    jsonPre.textContent = jsonString;
     jsonModal.style.display = 'block';
 });
 
