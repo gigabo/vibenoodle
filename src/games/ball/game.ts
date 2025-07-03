@@ -183,7 +183,11 @@ class Goal extends Polygon {
     }
 }
 
-class Barrier extends Polygon {}
+class Barrier extends Polygon {
+    constructor(vertices: Vector[]) {
+        super(vertices, 'yellow');
+    }
+}
 
 const ball = new Ball(100, GAME_HEIGHT - 100);
 const initialBallState = {
@@ -217,6 +221,8 @@ let currentLevel: Level;
 let barriers: Barrier[];
 let goal: Goal;
 let effectorCage: Polygon;
+let hoveredPolygon: Polygon | null = null;
+let selectedPolygon: Polygon | null = null;
 
 async function loadLevels() {
     try {
@@ -229,7 +235,7 @@ async function loadLevels() {
         levels = levelsData.map((levelData: any) => {
             const parseVertices = (verts: [number, number][]): Vector[] => verts.map(v => ({ x: v[0], y: v[1] }));
             return {
-                barriers: levelData.barriers.map((b: any) => new Barrier(parseVertices(b.vertices), b.color)),
+                barriers: levelData.barriers.map((b: any) => new Barrier(parseVertices(b.vertices))),
                 goal: new Goal(parseVertices(levelData.goal.vertices)),
                 effectorCage: new Polygon(parseVertices(levelData.effectorCage.vertices), '')
             };
@@ -266,6 +272,8 @@ function resetGame() {
     isLevelComplete = false;
     isSpringSnapped = false;
     snapAnimationTimer = 0;
+    selectedPolygon = null;
+    hoveredPolygon = null;
 }
 
 function checkCollisions() {
@@ -383,8 +391,7 @@ showJsonBtn.addEventListener('click', () => {
     const formatVertices = (verts: Vector[]) => verts.map(v => [v.x, v.y]);
     const levelJson = {
         barriers: currentLevel.barriers.map(b => ({
-            vertices: formatVertices(b.vertices),
-            color: b.color
+            vertices: formatVertices(b.vertices)
         })),
         goal: { vertices: formatVertices(currentLevel.goal.vertices) },
         effectorCage: { vertices: formatVertices(currentLevel.effectorCage.vertices) }
