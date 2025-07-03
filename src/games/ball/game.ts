@@ -704,37 +704,48 @@ canvas.addEventListener('mousedown', (e) => {
     draggedDistance = 0;
 
     if (isEditMode) {
-        if (hoveredVertexIndex !== null) {
+        if (selectedPolygon && hoveredVertexIndex !== null) {
             isDraggingVertex = true;
             draggedVertexIndex = hoveredVertexIndex;
-        } else if (hoveredEdgeInfo) {
+        } else if (selectedPolygon && hoveredEdgeInfo) {
             const { polygon, edgeIndex, closestPoint } = hoveredEdgeInfo;
             polygon.vertices.splice(edgeIndex + 1, 0, closestPoint);
             isDraggingVertex = true;
             draggedVertexIndex = edgeIndex + 1;
-        } else {
-            selectedPolygon = hoveredPolygon;
         }
     }
 });
 
 canvas.addEventListener('mouseup', () => {
     isMouseDown = false;
-    mouseDownPos = null;
 
-    if (isEditMode && isDraggingVertex) {
-        isDraggingVertex = false;
-        draggedVertexIndex = null;
-    } else if (isEditMode && hoveredVertexIndex !== null && selectedPolygon && draggedDistance < 5) {
-        selectedPolygon.vertices.splice(hoveredVertexIndex, 1);
-        if (selectedPolygon.vertices.length < 3) {
-            const index = barriers.indexOf(selectedPolygon as Barrier);
-            if (index > -1) {
-                barriers.splice(index, 1);
+    if (isEditMode) {
+        if (draggedDistance < 5) {
+            if (hoveredPolygon) {
+                if (selectedPolygon === hoveredPolygon) {
+                    if (hoveredVertexIndex !== null) {
+                        if (selectedPolygon.vertices.length > 3) {
+                            selectedPolygon.vertices.splice(hoveredVertexIndex, 1);
+                        } else {
+                            const index = barriers.indexOf(selectedPolygon as Barrier);
+                            if (index > -1) {
+                                barriers.splice(index, 1);
+                            }
+                            selectedPolygon = null;
+                        }
+                    }
+                } else {
+                    selectedPolygon = hoveredPolygon;
+                }
+            } else {
+                selectedPolygon = null;
             }
-            selectedPolygon = null;
         }
     }
+
+    isDraggingVertex = false;
+    draggedVertexIndex = null;
+    mouseDownPos = null;
 });
 
 canvas.addEventListener('mousemove', (e) => {
