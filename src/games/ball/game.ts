@@ -227,6 +227,8 @@ let hoveredVertexIndex: number | null = null;
 let draggedVertexIndex: number | null = null;
 let isDraggingVertex = false;
 let hoveredEdgeInfo: { polygon: Polygon, edgeIndex: number, closestPoint: Vector } | null = null;
+let mouseDownPos: Vector | null = null;
+let draggedDistance = 0;
 
 async function loadLevels() {
     try {
@@ -557,7 +559,7 @@ function gameLoop() {
 
                     if (distSq < 10 * 10 && distSq < minDistanceSq) { // 10px tolerance for edge hover
                         minDistanceSq = distSq;
-                        hoveredEdgeInfo = { polygon: selectedPolygon, edgeIndex: i, closestPoint };
+                        hoveredEdgeInfo = { polygon: selectedPolygon, edgeIndex: i, closestPoint: { x: Math.round(closestPoint.x), y: Math.round(closestPoint.y) } };
                     }
                 }
             }
@@ -686,8 +688,8 @@ function getMousePos(evt: MouseEvent) {
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return {
-        x: (evt.clientX - rect.left) * scaleX,
-        y: (evt.clientY - rect.top) * scaleY,
+        x: Math.round((evt.clientX - rect.left) * scaleX),
+        y: Math.round((evt.clientY - rect.top) * scaleY),
     };
 }
 
@@ -698,6 +700,8 @@ canvas.addEventListener('mousedown', (e) => {
     }
     isMouseDown = true;
     mousePosition = getMousePos(e);
+    mouseDownPos = mousePosition;
+    draggedDistance = 0;
 
     if (isEditMode) {
         if (hoveredVertexIndex !== null) {
@@ -716,11 +720,12 @@ canvas.addEventListener('mousedown', (e) => {
 
 canvas.addEventListener('mouseup', () => {
     isMouseDown = false;
+    mouseDownPos = null;
 
     if (isEditMode && isDraggingVertex) {
         isDraggingVertex = false;
         draggedVertexIndex = null;
-    } else if (isEditMode && hoveredVertexIndex !== null && selectedPolygon) {
+    } else if (isEditMode && hoveredVertexIndex !== null && selectedPolygon && draggedDistance < 5) {
         selectedPolygon.vertices.splice(hoveredVertexIndex, 1);
         if (selectedPolygon.vertices.length < 3) {
             const index = barriers.indexOf(selectedPolygon as Barrier);
@@ -734,6 +739,12 @@ canvas.addEventListener('mouseup', () => {
 
 canvas.addEventListener('mousemove', (e) => {
     mousePosition = getMousePos(e);
+
+    if (isMouseDown && mouseDownPos) {
+        const dx = mousePosition.x - mouseDownPos.x;
+        const dy = mousePosition.y - mouseDownPos.y;
+        draggedDistance = Math.sqrt(dx * dx + dy * dy);
+    }
 
     if (isEditMode && isDraggingVertex && selectedPolygon && draggedVertexIndex !== null) {
         selectedPolygon.vertices[draggedVertexIndex] = mousePosition;
