@@ -223,6 +223,10 @@ let goal: Goal;
 let effectorCage: Polygon;
 let hoveredPolygon: Polygon | null = null;
 let selectedPolygon: Polygon | null = null;
+let hoveredVertexIndex: number | null = null;
+let draggedVertexIndex: number | null = null;
+let isDraggingVertex = false;
+let hoveredEdgeInfo: { polygon: Polygon, edgeIndex: number, closestPoint: Vector } | null = null;
 
 async function loadLevels() {
     try {
@@ -274,6 +278,10 @@ function resetGame() {
     snapAnimationTimer = 0;
     selectedPolygon = null;
     hoveredPolygon = null;
+    hoveredVertexIndex = null;
+    draggedVertexIndex = null;
+    isDraggingVertex = false;
+    hoveredEdgeInfo = null;
 }
 
 function checkCollisions() {
@@ -518,8 +526,46 @@ function gameLoop() {
             }
         }
         hoveredPolygon = topPolygon;
+
+        hoveredVertexIndex = null;
+        hoveredEdgeInfo = null;
+
+        if (selectedPolygon) {
+            // Check for hovering over vertices
+            for (let i = 0; i < selectedPolygon.vertices.length; i++) {
+                const vertex = selectedPolygon.vertices[i];
+                const dx = mousePosition.x - vertex.x;
+                const dy = mousePosition.y - vertex.y;
+                if (dx * dx + dy * dy < 8 * 8) { // 8px radius for hover detection
+                    hoveredVertexIndex = i;
+                    break;
+                }
+            }
+
+            // If not hovering over a vertex, check for hovering over edges
+            if (hoveredVertexIndex === null) {
+                let minDistanceSq = Infinity;
+                for (let i = 0; i < selectedPolygon.vertices.length; i++) {
+                    const p1 = selectedPolygon.vertices[i];
+                    const p2 = selectedPolygon.vertices[(i + 1) % selectedPolygon.vertices.length];
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const lenSq = dx * dx + dy * dy;
+                    const t = Math.max(0, Math.min(1, ((mousePosition.x - p1.x) * dx + (mousePosition.y - p1.y) * dy) / lenSq));
+                    const closestPoint = { x: p1.x + t * dx, y: p1.y + t * dy };
+                    const distSq = (mousePosition.x - closestPoint.x) * (mousePosition.x - closestPoint.x) + (mousePosition.y - closestPoint.y) * (mousePosition.y - closestPoint.y);
+
+                    if (distSq < 10 * 10 && distSq < minDistanceSq) { // 10px tolerance for edge hover
+                        minDistanceSq = distSq;
+                        hoveredEdgeInfo = { polygon: selectedPolygon, edgeIndex: i, closestPoint };
+                    }
+                }
+            }
+        }
     } else {
         hoveredPolygon = null;
+        hoveredVertexIndex = null;
+        hoveredEdgeInfo = null;
     }
 
     // --- DRAWING ---
@@ -537,11 +583,22 @@ function gameLoop() {
         }
         if (selectedPolygon) {
             selectedPolygon.drawStroke('rgba(255, 255, 255, 1)', 2);
-            for (const vertex of selectedPolygon.vertices) {
+            for (let i = 0; i < selectedPolygon.vertices.length; i++) {
+                const vertex = selectedPolygon.vertices[i];
+                const radius = (hoveredVertexIndex === i) ? 8 : 4;
                 ctx.beginPath();
-                ctx.arc(vertex.x, vertex.y, 4, 0, Math.PI * 2);
+                ctx.arc(vertex.x, vertex.y, radius, 0, Math.PI * 2);
                 ctx.fillStyle = 'white';
                 ctx.fill();
+            }
+
+            if (hoveredEdgeInfo) {
+                const { closestPoint } = hoveredEdgeInfo;
+                ctx.beginPath();
+                ctx.arc(closestPoint.x, closestPoint.y, 8, 0, Math.PI * 2);
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
             }
         }
     }
@@ -643,16 +700,44 @@ canvas.addEventListener('mousedown', (e) => {
     mousePosition = getMousePos(e);
 
     if (isEditMode) {
-        selectedPolygon = hoveredPolygon;
+        if (hoveredVertexIndex !== null) {
+            isDraggingVertex = true;
+            draggedVertexIndex = hoveredVertexIndex;
+        } else if (hoveredEdgeInfo) {
+            const { polygon, edgeIndex, closestPoint } = hoveredEdgeInfo;
+            polygon.vertices.splice(edgeIndex + 1, 0, closestPoint);
+            isDraggingVertex = true;
+            draggedVertexIndex = edgeIndex + 1;
+        } else {
+            selectedPolygon = hoveredPolygon;
+        }
     }
 });
 
 canvas.addEventListener('mouseup', () => {
     isMouseDown = false;
+
+    if (isEditMode && isDraggingVertex) {
+        isDraggingVertex = false;
+        draggedVertexIndex = null;
+    } else if (isEditMode && hoveredVertexIndex !== null && selectedPolygon) {
+        selectedPolygon.vertices.splice(hoveredVertexIndex, 1);
+        if (selectedPolygon.vertices.length < 3) {
+            const index = barriers.indexOf(selectedPolygon as Barrier);
+            if (index > -1) {
+                barriers.splice(index, 1);
+            }
+            selectedPolygon = null;
+        }
+    }
 });
 
 canvas.addEventListener('mousemove', (e) => {
     mousePosition = getMousePos(e);
+
+    if (isEditMode && isDraggingVertex && selectedPolygon && draggedVertexIndex !== null) {
+        selectedPolygon.vertices[draggedVertexIndex] = mousePosition;
+    }
 });
 
 canvas.addEventListener('touchstart', (e) => {
