@@ -211,16 +211,16 @@ let isLevelComplete = false;
 
 interface Level {
     barriers: Barrier[];
-    goal: Goal;
-    effectorCage: Polygon;
+    goals: Goal[];
+    effectorCages: Polygon[];
 }
 
 let levels: Level[] = [];
 let currentLevelIndex = 0;
 let currentLevel: Level;
 let barriers: Barrier[];
-let goal: Goal;
-let effectorCage: Polygon;
+let goals: Goal[];
+let effectorCages: Polygon[];
 let hoveredPolygon: Polygon | null = null;
 let selectedPolygon: Polygon | null = null;
 let hoveredVertexIndex: number | null = null;
@@ -242,8 +242,8 @@ async function loadLevels() {
             const parseVertices = (verts: [number, number][]): Vector[] => verts.map(v => ({ x: v[0], y: v[1] }));
             return {
                 barriers: levelData.barriers.map((b: any) => new Barrier(parseVertices(b.vertices))),
-                goal: new Goal(parseVertices(levelData.goal.vertices)),
-                effectorCage: new Polygon(parseVertices(levelData.effectorCage.vertices), '')
+                goals: levelData.goals.map((g: any) => new Goal(parseVertices(g.vertices))),
+                effectorCages: levelData.effectorCages.map((c: any) => new Polygon(parseVertices(c.vertices), ''))
             };
         });
 
@@ -262,8 +262,8 @@ function loadLevel(levelIndex: number) {
     }
     currentLevel = levels[currentLevelIndex];
     barriers = currentLevel.barriers;
-    goal = currentLevel.goal;
-    effectorCage = currentLevel.effectorCage;
+    goals = currentLevel.goals;
+    effectorCages = currentLevel.effectorCages;
     resetGame();
 }
 
@@ -357,7 +357,15 @@ function checkCollisions() {
 function checkGoal() {
     if (isLevelComplete) return;
 
-    if (goal.isBallInside(ball)) {
+    let inGoal = false;
+    for (const goal of goals) {
+        if (goal.isBallInside(ball)) {
+            inGoal = true;
+            break;
+        }
+    }
+
+    if (inGoal) {
         goalTimer -= 1 / 60; // Assuming 60 FPS
         if (goalTimer <= 0) {
             isLevelComplete = true;
@@ -403,8 +411,12 @@ showJsonBtn.addEventListener('click', () => {
         barriers: currentLevel.barriers.map(b => ({
             vertices: formatVertices(b.vertices)
         })),
-        goal: { vertices: formatVertices(currentLevel.goal.vertices) },
-        effectorCage: { vertices: formatVertices(currentLevel.effectorCage.vertices) }
+        goals: currentLevel.goals.map(g => ({
+            vertices: formatVertices(g.vertices)
+        })),
+        effectorCages: currentLevel.effectorCages.map(c => ({
+            vertices: formatVertices(c.vertices)
+        }))
     };
 
     // Custom stringification to keep vertex arrays on one line
@@ -450,36 +462,61 @@ function gameLoop() {
 
     // Always update effector position if level is not complete
     if (!isLevelComplete) {
-        if (effectorCage.isPointInside(mousePosition)) {
-            effector.position.x = mousePosition.x;
-            effector.position.y = mousePosition.y;
-        } else {
-            // Find the closest point on the polygon's boundary
-            let closestPoint: Vector | null = null;
-            let minDistanceSq = Infinity;
+        let closestCage: Polygon | null = null;
+        let minDistanceSq = Infinity;
 
-            for (let i = 0; i < effectorCage.vertices.length; i++) {
-                const p1 = effectorCage.vertices[i];
-                const p2 = effectorCage.vertices[(i + 1) % effectorCage.vertices.length];
+        for (const cage of effectorCages) {
+            if (cage.isPointInside(mousePosition)) {
+                closestCage = cage;
+                break;
+            }
 
+            for (let i = 0; i < cage.vertices.length; i++) {
+                const p1 = cage.vertices[i];
+                const p2 = cage.vertices[(i + 1) % cage.vertices.length];
                 const dx = p2.x - p1.x;
                 const dy = p2.y - p1.y;
                 const lenSq = dx * dx + dy * dy;
-
                 const t = Math.max(0, Math.min(1, ((mousePosition.x - p1.x) * dx + (mousePosition.y - p1.y) * dy) / lenSq));
                 const closestX = p1.x + t * dx;
                 const closestY = p1.y + t * dy;
-
                 const distSq = (mousePosition.x - closestX) * (mousePosition.x - closestX) + (mousePosition.y - closestY) * (mousePosition.y - closestY);
 
                 if (distSq < minDistanceSq) {
                     minDistanceSq = distSq;
-                    closestPoint = { x: closestX, y: closestY };
+                    closestCage = cage;
                 }
             }
-            if (closestPoint) {
-                effector.position.x = closestPoint.x;
-                effector.position.y = closestPoint.y;
+        }
+
+        if (closestCage) {
+            if (closestCage.isPointInside(mousePosition)) {
+                effector.position.x = mousePosition.x;
+                effector.position.y = mousePosition.y;
+            } else {
+                let closestPointOnBoundary: Vector | null = null;
+                let minBoundaryDistSq = Infinity;
+
+                for (let i = 0; i < closestCage.vertices.length; i++) {
+                    const p1 = closestCage.vertices[i];
+                    const p2 = closestCage.vertices[(i + 1) % closestCage.vertices.length];
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const lenSq = dx * dx + dy * dy;
+                    const t = Math.max(0, Math.min(1, ((mousePosition.x - p1.x) * dx + (mousePosition.y - p1.y) * dy) / lenSq));
+                    const closestX = p1.x + t * dx;
+                    const closestY = p1.y + t * dy;
+                    const distSq = (mousePosition.x - closestX) * (mousePosition.x - closestX) + (mousePosition.y - closestY) * (mousePosition.y - closestY);
+
+                    if (distSq < minBoundaryDistSq) {
+                        minBoundaryDistSq = distSq;
+                        closestPointOnBoundary = { x: closestX, y: closestY };
+                    }
+                }
+                if (closestPointOnBoundary) {
+                    effector.position.x = closestPointOnBoundary.x;
+                    effector.position.y = closestPointOnBoundary.y;
+                }
             }
         }
     }
@@ -520,7 +557,7 @@ function gameLoop() {
     }
 
     if (isEditMode) {
-        const allPolygons = [goal, ...barriers, effectorCage];
+        const allPolygons = [...goals, ...barriers, ...effectorCages];
         let topPolygon: Polygon | null = null;
         for (const polygon of allPolygons) {
             if (polygon.isPointInside(mousePosition)) {
@@ -572,9 +609,12 @@ function gameLoop() {
 
     // --- DRAWING ---
 
-    goal.draw();
-    effectorCage.drawStroke('green', 1);
-
+    for (const goal of goals) {
+        goal.draw();
+    }
+    for (const cage of effectorCages) {
+        cage.drawStroke('green', 1);
+    }
     for (const barrier of barriers) {
         barrier.draw();
     }
@@ -721,13 +761,25 @@ canvas.addEventListener('mouseup', () => {
 
     if (isEditMode) {
         if (draggedDistance < 5) {
+            // Prioritize vertex click for deletion
             if (hoveredVertexIndex !== null && selectedPolygon) {
                 if (selectedPolygon.vertices.length > 3) {
                     selectedPolygon.vertices.splice(hoveredVertexIndex, 1);
                 } else {
-                    const index = barriers.indexOf(selectedPolygon as Barrier);
+                    // Remove the polygon if it has 3 or fewer vertices
+                    let index = barriers.indexOf(selectedPolygon as Barrier);
                     if (index > -1) {
                         barriers.splice(index, 1);
+                    } else {
+                        index = goals.indexOf(selectedPolygon as Goal);
+                        if (index > -1) {
+                            goals.splice(index, 1);
+                        } else {
+                            index = effectorCages.indexOf(selectedPolygon);
+                            if (index > -1) {
+                                effectorCages.splice(index, 1);
+                            }
+                        }
                     }
                     selectedPolygon = null;
                 }
