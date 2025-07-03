@@ -60,6 +60,25 @@ body, html {
     border-radius: 8px;
 }
 
+#add-barrier-btn, #add-cage-btn, #add-goal-btn {
+    background-color: #008CBA; /* Blue */
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+#add-barrier-btn.active, #add-cage-btn.active, #add-goal-btn.active {
+    background-color: #005f7a; /* Darker Blue */
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+}
+
 @media (max-aspect-ratio: 1/1) {
     .game-wrapper {
         flex-direction: column;
