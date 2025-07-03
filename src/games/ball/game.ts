@@ -721,22 +721,18 @@ canvas.addEventListener('mouseup', () => {
 
     if (isEditMode) {
         if (draggedDistance < 5) {
-            if (hoveredPolygon) {
-                if (selectedPolygon === hoveredPolygon) {
-                    if (hoveredVertexIndex !== null) {
-                        if (selectedPolygon.vertices.length > 3) {
-                            selectedPolygon.vertices.splice(hoveredVertexIndex, 1);
-                        } else {
-                            const index = barriers.indexOf(selectedPolygon as Barrier);
-                            if (index > -1) {
-                                barriers.splice(index, 1);
-                            }
-                            selectedPolygon = null;
-                        }
-                    }
+            if (hoveredVertexIndex !== null && selectedPolygon) {
+                if (selectedPolygon.vertices.length > 3) {
+                    selectedPolygon.vertices.splice(hoveredVertexIndex, 1);
                 } else {
-                    selectedPolygon = hoveredPolygon;
+                    const index = barriers.indexOf(selectedPolygon as Barrier);
+                    if (index > -1) {
+                        barriers.splice(index, 1);
+                    }
+                    selectedPolygon = null;
                 }
+            } else if (hoveredPolygon) {
+                selectedPolygon = hoveredPolygon;
             } else {
                 selectedPolygon = null;
             }
