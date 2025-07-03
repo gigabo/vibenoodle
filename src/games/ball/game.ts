@@ -509,6 +509,19 @@ function gameLoop() {
         checkGoal();
     }
 
+    if (isEditMode) {
+        const allPolygons = [goal, ...barriers, effectorCage];
+        let topPolygon: Polygon | null = null;
+        for (const polygon of allPolygons) {
+            if (polygon.isPointInside(mousePosition)) {
+                topPolygon = polygon;
+            }
+        }
+        hoveredPolygon = topPolygon;
+    } else {
+        hoveredPolygon = null;
+    }
+
     // --- DRAWING ---
 
     goal.draw();
@@ -516,6 +529,21 @@ function gameLoop() {
 
     for (const barrier of barriers) {
         barrier.draw();
+    }
+
+    if (isEditMode) {
+        if (hoveredPolygon) {
+            hoveredPolygon.drawStroke('rgba(255, 255, 255, 0.5)', 4);
+        }
+        if (selectedPolygon) {
+            selectedPolygon.drawStroke('rgba(255, 255, 255, 1)', 2);
+            for (const vertex of selectedPolygon.vertices) {
+                ctx.beginPath();
+                ctx.arc(vertex.x, vertex.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+            }
+        }
     }
 
     if (isMouseDown && !isLevelComplete && !isEditMode) {
@@ -613,6 +641,10 @@ canvas.addEventListener('mousedown', (e) => {
     }
     isMouseDown = true;
     mousePosition = getMousePos(e);
+
+    if (isEditMode) {
+        selectedPolygon = hoveredPolygon;
+    }
 });
 
 canvas.addEventListener('mouseup', () => {
