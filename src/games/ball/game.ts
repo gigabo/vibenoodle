@@ -817,12 +817,12 @@ window.addEventListener('click', (event) => {
         ctx.fillStyle = hoveredSuccessButton === 'replay' ? 'lightblue' : 'white';
         ctx.fillRect(replayButton.x, replayButton.y, replayButton.width, replayButton.height);
         ctx.fillStyle = 'black';
-        ctx.fillText('Replay', replayButton.x + replayButton.width / 2, replayButton.y + 25);
+        ctx.fillText('Replay', replayButton.x + replayButton.width / 2, replayButton.y + 10);
 
         ctx.fillStyle = hoveredSuccessButton === 'next' ? 'lightblue' : 'white';
         ctx.fillRect(nextButton.x, nextButton.y, nextButton.width, nextButton.height);
         ctx.fillStyle = 'black';
-        ctx.fillText('Next Level', nextButton.x + nextButton.width / 2, nextButton.y + 25);
+        ctx.fillText('Next Level', nextButton.x + nextButton.width / 2, nextButton.y + 10);
     }
 }
 
