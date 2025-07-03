@@ -231,6 +231,7 @@ let mouseDownPos: Vector | null = null;
 let draggedDistance = 0;
 let addModePolygonType: 'barrier' | 'cage' | 'goal' | null = null;
 let newPolygonVertices: Vector[] = [];
+let hoveredSuccessButton: 'replay' | 'next' | null = null;
 
 const addBarrierBtn = document.getElementById('add-barrier-btn') as HTMLButtonElement;
 const addCageBtn = document.getElementById('add-cage-btn') as HTMLButtonElement;
@@ -795,10 +796,33 @@ window.addEventListener('click', (event) => {
         ctx.fillStyle = 'white';
         ctx.font = '50px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Success!', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30);
+        ctx.fillText('Success!', GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60);
 
+        // Define button areas
+        const replayButton = { x: GAME_WIDTH / 2 - 150, y: GAME_HEIGHT / 2, width: 120, height: 40 };
+        const nextButton = { x: GAME_WIDTH / 2 + 30, y: GAME_HEIGHT / 2, width: 120, height: 40 };
+
+        // Check for hover
+        hoveredSuccessButton = null;
+        if (mousePosition.x >= replayButton.x && mousePosition.x <= replayButton.x + replayButton.width &&
+            mousePosition.y >= replayButton.y && mousePosition.y <= replayButton.y + replayButton.height) {
+            hoveredSuccessButton = 'replay';
+        } else if (mousePosition.x >= nextButton.x && mousePosition.x <= nextButton.x + nextButton.width &&
+                   mousePosition.y >= nextButton.y && mousePosition.y <= nextButton.y + nextButton.height) {
+            hoveredSuccessButton = 'next';
+        }
+
+        // Draw buttons
         ctx.font = '20px sans-serif';
-        ctx.fillText('Click to continue', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
+        ctx.fillStyle = hoveredSuccessButton === 'replay' ? 'lightblue' : 'white';
+        ctx.fillRect(replayButton.x, replayButton.y, replayButton.width, replayButton.height);
+        ctx.fillStyle = 'black';
+        ctx.fillText('Replay', replayButton.x + replayButton.width / 2, replayButton.y + 25);
+
+        ctx.fillStyle = hoveredSuccessButton === 'next' ? 'lightblue' : 'white';
+        ctx.fillRect(nextButton.x, nextButton.y, nextButton.width, nextButton.height);
+        ctx.fillStyle = 'black';
+        ctx.fillText('Next Level', nextButton.x + nextButton.width / 2, nextButton.y + 25);
     }
 }
 
@@ -813,10 +837,6 @@ function getMousePos(evt: MouseEvent) {
 }
 
 canvas.addEventListener('mousedown', (e) => {
-    if (isLevelComplete) {
-        loadLevel(currentLevelIndex + 1);
-        return;
-    }
     isMouseDown = true;
     mousePosition = getMousePos(e);
     mouseDownPos = mousePosition;
@@ -864,6 +884,15 @@ canvas.addEventListener('mousedown', (e) => {
 
 canvas.addEventListener('mouseup', () => {
     isMouseDown = false;
+
+    if (isLevelComplete) {
+        if (hoveredSuccessButton === 'replay') {
+            loadLevel(currentLevelIndex);
+        } else if (hoveredSuccessButton === 'next') {
+            loadLevel(currentLevelIndex + 1);
+        }
+        return;
+    }
 
     if (isEditMode) {
         if (draggedDistance < 5 && !addModePolygonType) {
