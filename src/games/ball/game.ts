@@ -210,6 +210,7 @@ let goalTimer = 3;
 let isLevelComplete = false;
 
 interface Level {
+    author: string;
     barriers: Barrier[];
     goals: Goal[];
     effectorCages: Polygon[];
@@ -248,6 +249,7 @@ async function loadLevels() {
         levels = levelsData.map((levelData: any) => {
             const parseVertices = (verts: [number, number][]): Vector[] => verts.map(v => ({ x: v[0], y: v[1] }));
             return {
+                author: levelData.author,
                 barriers: levelData.barriers.map((b: any) => new Barrier(parseVertices(b.vertices))),
                 goals: levelData.goals.map((g: any) => new Goal(parseVertices(g.vertices))),
                 effectorCages: levelData.effectorCages.map((c: any) => new Polygon(parseVertices(c.vertices), ''))
@@ -274,6 +276,16 @@ function loadLevel(levelIndex: number) {
     resetGame();
 }
 
+function drawLevelInfo() {
+    ctx.fillStyle = 'white';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Level ${currentLevelIndex + 1}`, 10, 60);
+    if (currentLevel.author) {
+        ctx.fillText(`Author: ${currentLevel.author}`, 10, 80);
+    }
+}
 
 
 function resetGame() {
@@ -775,6 +787,8 @@ window.addEventListener('click', (event) => {
         ball.draw();
         effector.draw();
     }
+
+    drawLevelInfo();
 
     // Draw Timer
     if (goalTimer < 3 && !isLevelComplete) {

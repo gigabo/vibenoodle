@@ -1,5 +1,6 @@
 [
     {
+        "author": "Bo",
         "barriers": [
             {
                 "vertices": [
@@ -30,6 +31,7 @@
         }]
     },
     {
+      "author": "Owen",
       "barriers": [
 	{
 	  "vertices": [
@@ -86,6 +88,7 @@
       ]
     },
     {
+      "author": "Owen",
       "barriers": [
 	{
 	  "vertices": [
